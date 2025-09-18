@@ -37,6 +37,7 @@ A modern Electron-based desktop application for retro gaming challenges with Goo
    - Create a project in [Google Cloud Console](https://console.cloud.google.com/)
    - Enable Google+ API
    - Create OAuth 2.0 credentials (Desktop application)
+   - Copy `config.example.json` to `config.json`
    - Update `config.json` with your credentials:
    ```json
    {
