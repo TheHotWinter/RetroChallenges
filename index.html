@@ -1,0 +1,695 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NES Challenges</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+
+        .header {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            padding: 20px;
+            box-shadow: 0 2px 20px rgba(0, 0, 0, 0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logo {
+            font-size: 1.8em;
+            font-weight: bold;
+            color: #333;
+        }
+
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .user-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: #4285f4;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+        }
+
+        .main-container {
+            padding: 30px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .card {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            margin-bottom: 20px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            transition: transform 0.3s ease;
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+        }
+
+        .card-title {
+            font-size: 1.3em;
+            font-weight: 600;
+            margin-bottom: 15px;
+            color: #333;
+        }
+
+        .config-section {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .file-selector {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            margin-bottom: 15px;
+        }
+
+        .file-path {
+            flex: 1;
+            padding: 10px 15px;
+            border: 2px solid #e1e5e9;
+            border-radius: 8px;
+            background: #f8f9fa;
+            font-family: monospace;
+            font-size: 0.9em;
+        }
+
+        .btn {
+            background: #4285f4;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            white-space: nowrap;
+        }
+
+        .btn:hover {
+            background: #3367d6;
+            transform: translateY(-2px);
+        }
+
+        .btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .btn-secondary {
+            background: #6c757d;
+        }
+
+        .btn-secondary:hover {
+            background: #5a6268;
+        }
+
+        .btn-success {
+            background: #28a745;
+        }
+
+        .btn-success:hover {
+            background: #218838;
+        }
+
+        .status-indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+
+        .status-ready {
+            background: #28a745;
+        }
+
+        .status-warning {
+            background: #ffc107;
+        }
+
+        .status-error {
+            background: #dc3545;
+        }
+
+        .webhook-input {
+            width: 100%;
+            padding: 12px 15px;
+            border: 2px solid #e1e5e9;
+            border-radius: 8px;
+            font-size: 1em;
+            margin-bottom: 10px;
+        }
+
+        .webhook-input:focus {
+            outline: none;
+            border-color: #4285f4;
+        }
+
+        .challenges-section {
+            margin-top: 30px;
+        }
+
+        .games-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+
+        .game-card {
+            background: white;
+            border-radius: 15px;
+            padding: 20px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+            transition: all 0.3s ease;
+            cursor: pointer;
+            border: 3px solid transparent;
+        }
+
+        .game-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+        }
+
+        .game-card.selected {
+            border-color: #4285f4;
+            background: #f0f7ff;
+        }
+
+        .game-title {
+            font-size: 1.2em;
+            font-weight: 600;
+            margin-bottom: 10px;
+            color: #333;
+        }
+
+        .game-rom {
+            font-size: 0.9em;
+            color: #666;
+            margin-bottom: 15px;
+            font-family: monospace;
+        }
+
+        .challenges-list {
+            list-style: none;
+        }
+
+        .challenge-item {
+            padding: 10px 15px;
+            margin-bottom: 8px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border: 2px solid transparent;
+        }
+
+        .challenge-item:hover {
+            background: #e9ecef;
+            transform: translateX(5px);
+        }
+
+        .challenge-item.selected {
+            background: #d4edda;
+            border-color: #28a745;
+        }
+
+        .challenge-name {
+            font-weight: 500;
+            color: #333;
+        }
+
+        .challenge-lua {
+            font-size: 0.8em;
+            color: #666;
+            font-family: monospace;
+            margin-top: 5px;
+        }
+
+        .launch-section {
+            text-align: center;
+            padding: 30px;
+            margin-top: 30px;
+        }
+
+        .launch-btn {
+            background: linear-gradient(135deg, #28a745, #20c997);
+            color: white;
+            border: none;
+            padding: 20px 40px;
+            border-radius: 50px;
+            font-size: 1.2em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 10px 30px rgba(40, 167, 69, 0.3);
+        }
+
+        .launch-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 15px 40px rgba(40, 167, 69, 0.4);
+        }
+
+        .launch-btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .challenge-status {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 20px;
+            margin-top: 20px;
+            display: none;
+        }
+
+        .challenge-data {
+            font-family: monospace;
+            background: #e9ecef;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 10px;
+            white-space: pre-wrap;
+        }
+
+        .footer {
+            text-align: center;
+            padding: 20px;
+            color: rgba(255, 255, 255, 0.8);
+            font-size: 0.9em;
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            margin-top: 20px;
+        }
+
+        .spinner {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #4285f4;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 10px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .error-message {
+            background: #f8d7da;
+            color: #721c24;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 15px 0;
+            border: 1px solid #f5c6cb;
+        }
+
+        .success-message {
+            background: #d4edda;
+            color: #155724;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 15px 0;
+            border: 1px solid #c3e6cb;
+        }
+
+        .refresh-btn {
+            background: #17a2b8;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.9em;
+            margin-left: 10px;
+        }
+
+        .refresh-btn:hover {
+            background: #138496;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="logo">🎮 RetroChallenges</div>
+        <div class="user-info">
+            <div class="user-avatar" id="userAvatar">👤</div>
+            <div>
+                <div id="userName">Not authenticated</div>
+                <div style="font-size: 0.8em; color: #666;" id="userEmail">Click to sign in</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="main-container">
+        <div class="config-section">
+            <div class="card">
+                <div class="card-title">
+                    <span class="status-indicator status-warning" id="emuhawkStatus"></span>
+                    EmuHawk Configuration
+                </div>
+                <div class="file-selector">
+                    <input type="text" class="file-path" id="emuhawkPath" placeholder="Select EmuHawk.exe" readonly>
+                    <button class="btn" id="selectEmuhawk">Browse</button>
+                </div>
+                <p style="color: #666; font-size: 0.9em; margin-top: 10px;">
+                    Select the EmuHawk.exe executable file
+                </p>
+            </div>
+
+            <div class="card">
+                <div class="card-title">
+                    <span class="status-indicator status-warning" id="webhookStatus"></span>
+                    Webhook Configuration
+                </div>
+                <div>
+                    <input type="url" class="webhook-input" id="webhookUrl" placeholder="https://your-webhook-url.com">
+                    <button class="btn btn-secondary" id="saveWebhook">Save Webhook URL</button>
+                </div>
+                <p style="color: #666; font-size: 0.9em; margin-top: 10px;">
+                    Configure the webhook URL for sending challenge data to your n8n workflow
+                </p>
+            </div>
+        </div>
+
+        <div class="card challenges-section">
+            <div class="card-title">
+                🎯 Available Challenges
+                <button class="refresh-btn" id="refreshChallenges">Refresh</button>
+            </div>
+            <div id="challengesLoading" class="loading">
+                <div class="spinner"></div>
+                <p>Loading challenges...</p>
+            </div>
+            <div id="challengesError" class="error-message" style="display: none;"></div>
+            <div id="gamesGrid" class="games-grid"></div>
+        </div>
+
+        <div class="card launch-section">
+            <div class="card-title">Launch Selected Challenge</div>
+                <p style="color: #666; margin-bottom: 20px;">
+                Select a retro game and challenge above, then launch!
+            </p>
+            <button class="launch-btn" id="launchChallenge" disabled>
+                🚀 Launch Challenge
+            </button>
+            <div class="loading" id="launchLoading">
+                <div class="spinner"></div>
+                <p>Launching challenge...</p>
+            </div>
+        </div>
+
+        <div class="card challenge-status" id="challengeStatus">
+            <div class="card-title">Challenge Status</div>
+            <div id="statusMessage">Waiting for challenge completion...</div>
+            <div class="challenge-data" id="challengeData"></div>
+        </div>
+    </div>
+
+    <div class="footer">
+        RetroChallenges - Retro Gaming Platform
+    </div>
+
+    <script>
+        const { ipcRenderer } = require('electron');
+
+        let config = {
+            emuhawkPath: '',
+            webhookUrl: ''
+        };
+
+        let challengesData = null;
+        let selectedGame = null;
+        let selectedChallenge = null;
+
+        // Load user info
+        async function loadUserInfo() {
+            console.log('🔄 Frontend: Loading user info...');
+            try {
+                console.log('📞 Frontend: Calling ipcRenderer.invoke("get-user-info")');
+                const userInfo = await ipcRenderer.invoke('get-user-info');
+                console.log('📥 Frontend: Received user info:', userInfo);
+                
+                if (userInfo && userInfo.name) {
+                    console.log('✅ Frontend: User is authenticated, updating UI');
+                    document.getElementById('userName').textContent = userInfo.name;
+                    document.getElementById('userEmail').textContent = userInfo.email || 'Authenticated';
+                    document.getElementById('userAvatar').textContent = userInfo.name.charAt(0).toUpperCase();
+                    
+                    // Add visual feedback that user is authenticated
+                    document.getElementById('userName').style.color = '#28a745';
+                    document.getElementById('userEmail').style.color = '#28a745';
+                    
+                    console.log('🎉 Frontend: User authenticated successfully:', userInfo);
+                } else {
+                    console.log('❌ Frontend: User not authenticated, showing default state');
+                    // Show not authenticated state
+                    document.getElementById('userName').textContent = 'Not authenticated';
+                    document.getElementById('userEmail').textContent = 'Please sign in';
+                    document.getElementById('userAvatar').textContent = '👤';
+                    
+                    document.getElementById('userName').style.color = '#dc3545';
+                    document.getElementById('userEmail').style.color = '#dc3545';
+                    
+                    console.log('⚠️ Frontend: User not authenticated');
+                }
+            } catch (error) {
+                console.error('💥 Frontend: Error loading user info:', error);
+                // Show error state
+                document.getElementById('userName').textContent = 'Authentication error';
+                document.getElementById('userEmail').textContent = 'Please try again';
+                document.getElementById('userAvatar').textContent = '❌';
+                
+                document.getElementById('userName').style.color = '#dc3545';
+                document.getElementById('userEmail').style.color = '#dc3545';
+            }
+        }
+
+        // Load configuration
+        async function loadConfig() {
+            try {
+                config = await ipcRenderer.invoke('get-config');
+                document.getElementById('emuhawkPath').value = config.emuhawkPath || '';
+                document.getElementById('webhookUrl').value = config.webhookUrl || '';
+                updateStatusIndicators();
+            } catch (error) {
+                console.error('Error loading config:', error);
+            }
+        }
+
+        // Update status indicators
+        function updateStatusIndicators() {
+            const emuhawkStatus = document.getElementById('emuhawkStatus');
+            const webhookStatus = document.getElementById('webhookStatus');
+            const launchBtn = document.getElementById('launchChallenge');
+
+            // EmuHawk status
+            if (config.emuhawkPath) {
+                emuhawkStatus.className = 'status-indicator status-ready';
+            } else {
+                emuhawkStatus.className = 'status-indicator status-warning';
+            }
+
+            // Webhook status
+            if (config.webhookUrl) {
+                webhookStatus.className = 'status-indicator status-ready';
+            } else {
+                webhookStatus.className = 'status-indicator status-warning';
+            }
+
+            // Enable launch button if all configured and challenge selected
+            if (config.emuhawkPath && selectedGame && selectedChallenge) {
+                launchBtn.disabled = false;
+            } else {
+                launchBtn.disabled = true;
+            }
+        }
+
+        // Load challenges
+        async function loadChallenges() {
+            const loading = document.getElementById('challengesLoading');
+            const error = document.getElementById('challengesError');
+            const gamesGrid = document.getElementById('gamesGrid');
+
+            loading.style.display = 'block';
+            error.style.display = 'none';
+            gamesGrid.innerHTML = '';
+
+            try {
+                challengesData = await ipcRenderer.invoke('fetch-challenges');
+                renderGames();
+            } catch (err) {
+                error.textContent = `Failed to load challenges: ${err.message}`;
+                error.style.display = 'block';
+            } finally {
+                loading.style.display = 'none';
+            }
+        }
+
+        // Render games
+        function renderGames() {
+            const gamesGrid = document.getElementById('gamesGrid');
+            gamesGrid.innerHTML = '';
+
+            if (!challengesData || !challengesData.games) {
+                gamesGrid.innerHTML = '<p>No challenges available</p>';
+                return;
+            }
+
+            challengesData.games.forEach(game => {
+                const gameCard = document.createElement('div');
+                gameCard.className = 'game-card';
+                gameCard.innerHTML = `
+                    <div class="game-title">${game.name}</div>
+                    <div class="game-rom">ROM: ${game.rom}</div>
+                    <ul class="challenges-list">
+                        ${game.challenges.map(challenge => `
+                            <li class="challenge-item" data-game='${JSON.stringify(game)}' data-challenge='${JSON.stringify(challenge)}'>
+                                <div class="challenge-name">${challenge.name}</div>
+                                <div class="challenge-lua">Script: ${challenge.lua}</div>
+                            </li>
+                        `).join('')}
+                    </ul>
+                `;
+
+                // Add click handlers for challenges
+                gameCard.querySelectorAll('.challenge-item').forEach(item => {
+                    item.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        selectChallenge(JSON.parse(item.dataset.game), JSON.parse(item.dataset.challenge));
+                    });
+                });
+
+                gamesGrid.appendChild(gameCard);
+            });
+        }
+
+        // Select challenge
+        function selectChallenge(game, challenge) {
+            // Clear previous selections
+            document.querySelectorAll('.game-card').forEach(card => card.classList.remove('selected'));
+            document.querySelectorAll('.challenge-item').forEach(item => item.classList.remove('selected'));
+
+            // Select new challenge
+            selectedGame = game;
+            selectedChallenge = challenge;
+
+            // Highlight selected items
+            const gameCard = event.target.closest('.game-card');
+            gameCard.classList.add('selected');
+            event.target.classList.add('selected');
+
+            updateStatusIndicators();
+        }
+
+        // Event listeners
+        document.getElementById('selectEmuhawk').addEventListener('click', async () => {
+            try {
+                const path = await ipcRenderer.invoke('select-emuhawk');
+                if (path) {
+                    config.emuhawkPath = path;
+                    document.getElementById('emuhawkPath').value = path;
+                    updateStatusIndicators();
+                }
+            } catch (error) {
+                console.error('Error selecting EmuHawk:', error);
+            }
+        });
+
+        document.getElementById('saveWebhook').addEventListener('click', async () => {
+            const url = document.getElementById('webhookUrl').value.trim();
+            if (url) {
+                try {
+                    await ipcRenderer.invoke('set-webhook-url', url);
+                    config.webhookUrl = url;
+                    updateStatusIndicators();
+                    alert('Webhook URL saved successfully!');
+                } catch (error) {
+                    console.error('Error saving webhook:', error);
+                    alert('Error saving webhook URL');
+                }
+            } else {
+                alert('Please enter a valid webhook URL');
+            }
+        });
+
+        document.getElementById('refreshChallenges').addEventListener('click', loadChallenges);
+
+        document.getElementById('launchChallenge').addEventListener('click', async () => {
+            const launchBtn = document.getElementById('launchChallenge');
+            const loading = document.getElementById('launchLoading');
+            const statusCard = document.getElementById('challengeStatus');
+
+            launchBtn.disabled = true;
+            loading.style.display = 'block';
+            statusCard.style.display = 'block';
+
+            try {
+                const result = await ipcRenderer.invoke('launch-challenge', selectedGame, selectedChallenge);
+                if (result === 'success') {
+                    document.getElementById('statusMessage').textContent = `Challenge "${selectedChallenge.name}" launched successfully! Waiting for completion...`;
+                } else {
+                    throw new Error('Failed to launch challenge');
+                }
+            } catch (error) {
+                console.error('Error launching challenge:', error);
+                document.getElementById('statusMessage').textContent = `Error: ${error.message}`;
+            } finally {
+                loading.style.display = 'none';
+                launchBtn.disabled = false;
+            }
+        });
+
+        // Listen for challenge completion
+        ipcRenderer.on('challenge-completed', (event, data) => {
+            document.getElementById('statusMessage').textContent = 'Challenge completed! Data sent to webhook.';
+            document.getElementById('challengeData').textContent = JSON.stringify(data, null, 2);
+        });
+
+        // Initialize
+        loadUserInfo();
+        loadConfig();
+        loadChallenges();
+        
+        // Check user authentication status periodically
+        setInterval(loadUserInfo, 2000);
+    </script>
+</body>
+</html>
