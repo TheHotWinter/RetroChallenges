@@ -1,7 +1,7 @@
 {
-  "name": "retro-challenges",
+  "name": "retrochallenge",
   "version": "1.0.0",
-  "description": "RetroChallenges Electron App",
+  "description": "RetroChallenge Electron App",
   "main": "main.js",
   "scripts": {
     "start": "electron .",
@@ -15,7 +15,7 @@
     "emuhawk",
     "nes"
   ],
-  "author": "RetroChallenges Team",
+  "author": "RetroChallenge Team",
   "license": "MIT",
   "devDependencies": {
     "electron-builder": "^24.6.4"
@@ -25,8 +25,8 @@
     "electron": "^38.1.2"
   },
   "build": {
-    "appId": "com.retrochallenges.app",
-    "productName": "RetroChallenges",
+    "appId": "com.retrochallenge.app",
+    "productName": "RetroChallenge",
     "directories": {
       "output": "dist"
     },

@@ -1,4 +1,4 @@
-# 🎮 NES Challenge - Retro Gaming Platform
+# 🎮 RetroChallenge - Retro Gaming Platform
 
 A modern Electron-based desktop application for retro gaming challenges with Google OAuth authentication and EmuHawk emulator integration.
 
@@ -24,8 +24,8 @@ A modern Electron-based desktop application for retro gaming challenges with Goo
 
 1. **Clone the repository**
    ```bash
-   git clone https://github.com/yourusername/nes-challenge.git
-   cd nes-challenge
+   git clone https://github.com/mattd1980/retrochallenge.git
+   cd retrochallenge
    ```
 
 2. **Install dependencies**
@@ -88,7 +88,7 @@ A modern Electron-based desktop application for retro gaming challenges with Goo
 ## 📁 Project Structure
 
 ```
-nes-challenge/
+retrochallenge/
 ├── assets/                 # App icons and images
 ├── roms/                  # ROM files (user-added)
 ├── scripts/               # Lua challenge scripts
@@ -207,7 +207,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 If you encounter any issues:
 
-1. Check the [Issues](https://github.com/yourusername/nes-challenge/issues) page
+1. Check the [Issues](https://github.com/mattd1980/retrochallenge/issues) page
 2. Create a new issue with detailed information
 3. Include error messages and steps to reproduce
 
