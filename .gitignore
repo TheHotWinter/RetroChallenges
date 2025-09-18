@@ -104,6 +104,9 @@ roms/*.rom
 # Challenge data (user-specific)
 challenge_data.json
 
+# Authentication data (user-specific, contains sensitive tokens)
+auth_data.json
+
 # Test files
 test-*.js
 *-test.js
