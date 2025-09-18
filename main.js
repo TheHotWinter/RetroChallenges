@@ -4,7 +4,7 @@ const fs = require('fs');
 const { spawn } = require('child_process');
 const axios = require('axios');
 
-console.log('🚀 Starting RetroChallenge App...');
+console.log('🚀 Starting RetroChallenges App...');
 console.log('📦 Electron version:', process.versions.electron);
 console.log('🔧 Node version:', process.versions.node);
 console.log('📁 App path:', __dirname);
@@ -52,7 +52,7 @@ function createMainWindow() {
       enableRemoteModule: true
     },
     icon: path.join(__dirname, 'assets', 'icon.png'),
-    title: 'RetroChallenge'
+    title: 'RetroChallenges'
   });
 
   mainWindow.loadFile('index.html');
@@ -220,7 +220,7 @@ async function fetchChallenges() {
     const response = await axios.get(APP_CONFIG.challengesUrl, {
       timeout: 10000,
       headers: {
-        'User-Agent': 'RetroChallenge-App/1.0'
+        'User-Agent': 'RetroChallenges-App/1.0'
       }
     });
     
