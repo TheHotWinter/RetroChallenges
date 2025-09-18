@@ -1,0 +1,10 @@
+{
+  "google": {
+    "clientId": "YOUR_GOOGLE_CLIENT_ID",
+    "clientSecret": "YOUR_GOOGLE_CLIENT_SECRET",
+    "redirectUri": "urn:ietf:wg:oauth:2.0:oob"
+  },
+  "challenges": {
+    "url": "https://retrochallenges.com/challenges/challenges.json"
+  }
+}
