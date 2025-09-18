@@ -386,6 +386,9 @@
             <button class="btn btn-secondary" id="logoutBtn" style="display: none; margin-left: 15px; padding: 8px 16px; font-size: 0.9em;">
                 Logout
             </button>
+            <button class="btn" id="signInBtn" style="display: none; margin-left: 15px; padding: 8px 16px; font-size: 0.9em;">
+                Sign In
+            </button>
         </div>
     </div>
 
@@ -488,6 +491,7 @@
                     }
                     
                     document.getElementById('logoutBtn').style.display = 'block';
+                    document.getElementById('signInBtn').style.display = 'none';
                     
                     // Add visual feedback that user is authenticated
                     document.getElementById('userName').style.color = '#28a745';
@@ -498,6 +502,7 @@
                     document.getElementById('userEmail').textContent = 'Please sign in';
                     document.getElementById('userAvatar').innerHTML = '👤';
                     document.getElementById('logoutBtn').style.display = 'none';
+                    document.getElementById('signInBtn').style.display = 'block';
                     
                     document.getElementById('userName').style.color = '#dc3545';
                     document.getElementById('userEmail').style.color = '#dc3545';
@@ -509,6 +514,7 @@
                 document.getElementById('userEmail').textContent = 'Please try again';
                 document.getElementById('userAvatar').innerHTML = '❌';
                 document.getElementById('logoutBtn').style.display = 'none';
+                document.getElementById('signInBtn').style.display = 'block';
                 
                 document.getElementById('userName').style.color = '#dc3545';
                 document.getElementById('userEmail').style.color = '#dc3545';
@@ -704,6 +710,22 @@
                 window.location.reload();
             } catch (error) {
                 console.error('Error logging out:', error);
+            }
+        });
+
+        // Sign in functionality
+        document.getElementById('signInBtn').addEventListener('click', async () => {
+            try {
+                const result = await ipcRenderer.invoke('authenticate');
+                if (result.success) {
+                    // Reload user info and hide sign in button
+                    await loadUserInfo();
+                } else {
+                    alert('Authentication failed: ' + result.error);
+                }
+            } catch (error) {
+                console.error('Error signing in:', error);
+                alert('Error signing in: ' + error.message);
             }
         });
 

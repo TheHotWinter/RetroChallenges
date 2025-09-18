@@ -269,6 +269,13 @@ async function loadAuthData() {
     if (fs.existsSync(APP_CONFIG.authDataPath)) {
       const authData = JSON.parse(fs.readFileSync(APP_CONFIG.authDataPath, 'utf8'));
       
+      // Validate that we have valid user data
+      if (!authData.user || !authData.user.name || !authData.user.email) {
+        console.log('Invalid auth data: missing user information');
+        clearAuthData();
+        return null;
+      }
+      
       // Check if tokens are still valid (not expired)
       if (authData.tokens && authData.tokens.expires_at > Date.now()) {
         return authData;
@@ -279,6 +286,8 @@ async function loadAuthData() {
     }
   } catch (error) {
     console.error('Error loading auth data:', error);
+    // If there's an error parsing the file, clear it
+    clearAuthData();
   }
   return null;
 }
@@ -566,15 +575,18 @@ app.whenReady().then(async () => {
   
   // Try to load existing authentication
   const authData = await loadAuthData();
-  if (authData && authData.user) {
+  if (authData && authData.user && authData.user.name) {
     // User is already authenticated, go straight to main window
     isAuthenticated = true;
     userInfo = authData.user;
     authTokens = authData.tokens;
     createMainWindow();
   } else {
-    // No valid authentication, show auth window
-    createAuthWindow();
+    // No valid authentication, show main window with sign-in option
+    isAuthenticated = false;
+    userInfo = null;
+    authTokens = null;
+    createMainWindow();
   }
   
   monitorJsonFile();
