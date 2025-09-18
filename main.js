@@ -4,10 +4,6 @@ const fs = require('fs');
 const { spawn } = require('child_process');
 const axios = require('axios');
 
-console.log('🚀 Starting RetroChallenges App...');
-console.log('📦 Electron version:', process.versions.electron);
-console.log('🔧 Node version:', process.versions.node);
-console.log('📁 App path:', __dirname);
 
 // Load configuration
 let CONFIG = {};
@@ -33,7 +29,8 @@ const APP_CONFIG = {
   emuhawkPath: '', // Will be set by user
   challengesUrl: CONFIG.challenges.url,
   jsonOutputPath: path.join(__dirname, 'challenge_data.json'),
-  romsPath: path.join(__dirname, 'roms') // Directory for ROM files
+  romsPath: path.join(__dirname, 'roms'), // Directory for ROM files
+  authDataPath: path.join(__dirname, 'auth_data.json') // File to store authentication data
 };
 
 let mainWindow;
@@ -41,6 +38,7 @@ let emuProcess = null;
 let isAuthenticated = false;
 let userInfo = null;
 let challengesData = null;
+let authTokens = null; // Store access and refresh tokens
 
 function createMainWindow() {
   mainWindow = new BrowserWindow({
@@ -90,7 +88,6 @@ function createAuthWindow() {
 
 // Google OAuth implementation - Real OAuth flow with browser window
 async function authenticateWithGoogle() {
-  console.log('🔐 Starting real Google OAuth authentication...');
   try {
     // Create OAuth URL
     const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?` +
@@ -99,8 +96,6 @@ async function authenticateWithGoogle() {
       `response_type=code&` +
       `scope=openid%20email%20profile&` +
       `access_type=offline`;
-    
-    console.log('🌐 OAuth URL created:', authUrl);
     
     // Create a new browser window for OAuth
     const authWindow = new BrowserWindow({
@@ -115,41 +110,33 @@ async function authenticateWithGoogle() {
       resizable: false
     });
     
-    console.log('🪟 Opening OAuth window...');
-    
     // Load the OAuth URL
     await authWindow.loadURL(authUrl);
     
     // Handle the OAuth callback
     return new Promise((resolve) => {
       authWindow.webContents.on('will-redirect', (event, url) => {
-        console.log('🔄 OAuth redirect detected:', url);
-        
         // Check if this is the callback URL
         if (url.includes('code=')) {
-          console.log('✅ Authorization code received!');
-          
           // Extract the authorization code
           const urlParams = new URLSearchParams(url.split('?')[1]);
           const code = urlParams.get('code');
           
           if (code) {
-            console.log('🔑 Authorization code:', code);
             
             // Exchange code for tokens and get user info
             exchangeCodeForTokens(code, CONFIG.google.clientId)
               .then(result => {
-                console.log('🎉 OAuth authentication successful!', result);
                 authWindow.close();
                 resolve(result);
               })
               .catch(error => {
-                console.error('❌ Token exchange failed:', error);
+                console.error('Token exchange failed:', error);
                 authWindow.close();
                 resolve({ success: false, error: error.message });
               });
           } else {
-            console.error('❌ No authorization code found in URL');
+            console.error('No authorization code found in URL');
             authWindow.close();
             resolve({ success: false, error: 'No authorization code received' });
           }
@@ -158,22 +145,19 @@ async function authenticateWithGoogle() {
       
       // Handle window close
       authWindow.on('closed', () => {
-        console.log('🚪 OAuth window closed');
         resolve({ success: false, error: 'Authentication cancelled' });
       });
     });
     
   } catch (error) {
-    console.error('❌ OAuth authentication error:', error);
+    console.error('OAuth authentication error:', error);
     return { success: false, error: error.message };
   }
 }
 
 // Exchange authorization code for access token
 async function exchangeCodeForTokens(code, clientId) {
-  console.log('🔄 Exchanging authorization code for tokens...');
   try {
-    console.log('📤 Sending token exchange request...');
     const response = await axios.post('https://oauth2.googleapis.com/token', {
       client_id: clientId,
       client_secret: CONFIG.google.clientSecret,
@@ -182,19 +166,14 @@ async function exchangeCodeForTokens(code, clientId) {
       redirect_uri: CONFIG.google.redirectUri
     });
 
-    console.log('✅ Token exchange successful!');
-    const { access_token } = response.data;
-    console.log('🔑 Access token received');
+    const { access_token, refresh_token, expires_in } = response.data;
 
     // Get user info from Google API
-    console.log('👤 Fetching user info from Google API...');
     const userResponse = await axios.get('https://www.googleapis.com/oauth2/v2/userinfo', {
       headers: {
         'Authorization': `Bearer ${access_token}`
       }
     });
-
-    console.log('✅ User info received:', userResponse.data);
 
     const user = {
       name: userResponse.data.name,
@@ -203,13 +182,23 @@ async function exchangeCodeForTokens(code, clientId) {
       picture: userResponse.data.picture
     };
 
+    // Store tokens for persistence
+    authTokens = {
+      access_token,
+      refresh_token,
+      expires_at: Date.now() + (expires_in * 1000)
+    };
+    
+    // Save authentication data to file
+    saveAuthData(user, authTokens);
+
     return {
       success: true,
       user: user,
       accessToken: access_token
     };
   } catch (error) {
-    console.error('❌ Token exchange failed:', error.response?.data || error.message);
+    console.error('Token exchange failed:', error.response?.data || error.message);
     throw new Error(`Token exchange failed: ${error.response?.data?.error_description || error.message}`);
   }
 }
@@ -225,7 +214,6 @@ async function fetchChallenges() {
     });
     
     challengesData = response.data;
-    console.log('Challenges loaded:', challengesData);
     return challengesData;
   } catch (error) {
     console.error('Error fetching challenges:', error.message);
@@ -259,6 +247,109 @@ function ensureRomsDirectory() {
   if (!fs.existsSync(APP_CONFIG.romsPath)) {
     fs.mkdirSync(APP_CONFIG.romsPath, { recursive: true });
   }
+}
+
+// Save authentication data to file
+function saveAuthData(user, tokens) {
+  try {
+    const authData = {
+      user: user,
+      tokens: tokens,
+      timestamp: Date.now()
+    };
+    fs.writeFileSync(APP_CONFIG.authDataPath, JSON.stringify(authData, null, 2));
+  } catch (error) {
+    console.error('Error saving auth data:', error);
+  }
+}
+
+// Load authentication data from file
+async function loadAuthData() {
+  try {
+    if (fs.existsSync(APP_CONFIG.authDataPath)) {
+      const authData = JSON.parse(fs.readFileSync(APP_CONFIG.authDataPath, 'utf8'));
+      
+      // Check if tokens are still valid (not expired)
+      if (authData.tokens && authData.tokens.expires_at > Date.now()) {
+        return authData;
+      } else {
+        // Try to refresh token if expired
+        return await refreshAuthToken(authData.tokens?.refresh_token);
+      }
+    }
+  } catch (error) {
+    console.error('Error loading auth data:', error);
+  }
+  return null;
+}
+
+// Refresh access token using refresh token
+async function refreshAuthToken(refreshToken) {
+  if (!refreshToken) {
+    return null;
+  }
+  
+  try {
+    const response = await axios.post('https://oauth2.googleapis.com/token', {
+      client_id: CONFIG.google.clientId,
+      client_secret: CONFIG.google.clientSecret,
+      refresh_token: refreshToken,
+      grant_type: 'refresh_token'
+    });
+
+    const { access_token, expires_in } = response.data;
+    
+    // Get user info with new token
+    const userResponse = await axios.get('https://www.googleapis.com/oauth2/v2/userinfo', {
+      headers: {
+        'Authorization': `Bearer ${access_token}`
+      }
+    });
+
+    const user = {
+      name: userResponse.data.name,
+      email: userResponse.data.email,
+      id: userResponse.data.id,
+      picture: userResponse.data.picture
+    };
+
+    // Update tokens
+    authTokens = {
+      access_token,
+      refresh_token, // Keep the same refresh token
+      expires_at: Date.now() + (expires_in * 1000)
+    };
+    
+    // Save updated auth data
+    saveAuthData(user, authTokens);
+    
+    return { user, tokens: authTokens };
+  } catch (error) {
+    console.error('Token refresh failed:', error);
+    // If refresh fails, delete auth data file
+    try {
+      if (fs.existsSync(APP_CONFIG.authDataPath)) {
+        fs.unlinkSync(APP_CONFIG.authDataPath);
+      }
+    } catch (deleteError) {
+      console.error('Error deleting auth data:', deleteError);
+    }
+    return null;
+  }
+}
+
+// Clear authentication data
+function clearAuthData() {
+  try {
+    if (fs.existsSync(APP_CONFIG.authDataPath)) {
+      fs.unlinkSync(APP_CONFIG.authDataPath);
+    }
+  } catch (error) {
+    console.error('Error clearing auth data:', error);
+  }
+  isAuthenticated = false;
+  userInfo = null;
+  authTokens = null;
 }
 
 // Launch EmuHawk with ROM and Lua script
@@ -302,7 +393,6 @@ function launchEmuHawk(romPath, luaScriptPath) {
   });
 
   emuProcess.on('close', (code) => {
-    console.log(`EmuHawk exited with code ${code}`);
     emuProcess = null;
   });
 
@@ -328,7 +418,6 @@ function monitorJsonFile() {
             data.date = new Date().toISOString();
           }
           
-          console.log('Sending challenge data:', data);
           
           // Send to webhook
           await sendToWebhook(data);
@@ -359,7 +448,6 @@ async function sendToWebhook(data) {
       timeout: 10000
     });
     
-    console.log('Webhook sent successfully:', response.status);
     return true;
   } catch (error) {
     console.error('Webhook error:', error.message);
@@ -369,25 +457,18 @@ async function sendToWebhook(data) {
 
 // IPC Handlers - Register after app is ready
 function registerIpcHandlers() {
-  console.log('🔧 Registering IPC handlers...');
-  
   ipcMain.handle('authenticate', async () => {
-    console.log('📞 IPC: authenticate called');
     try {
       const result = await authenticateWithGoogle();
-      console.log('📞 IPC: authenticate result:', result);
       
       if (result.success) {
         isAuthenticated = true;
         userInfo = result.user;
-        console.log('✅ Authentication state updated:', { isAuthenticated, userInfo });
-      } else {
-        console.log('❌ Authentication failed:', result.error);
       }
       
       return result;
     } catch (error) {
-      console.error('💥 IPC authenticate error:', error);
+      console.error('IPC authenticate error:', error);
       return { success: false, error: error.message };
     }
   });
@@ -456,10 +537,12 @@ function registerIpcHandlers() {
   });
 
   ipcMain.handle('get-user-info', () => {
-    console.log('📞 IPC: get-user-info called');
-    console.log('👤 Current userInfo:', userInfo);
-    console.log('🔐 Current isAuthenticated:', isAuthenticated);
     return userInfo;
+  });
+
+  ipcMain.handle('logout', () => {
+    clearAuthData();
+    return true;
   });
 
   ipcMain.handle('get-config', () => {
@@ -477,24 +560,24 @@ function registerIpcHandlers() {
 }
 
 // App event handlers
-console.log('⏳ Waiting for app to be ready...');
-
-app.whenReady().then(() => {
-  console.log('🎯 App is ready! Initializing...');
-  
-  console.log('🔧 Registering IPC handlers...');
+app.whenReady().then(async () => {
   registerIpcHandlers();
-  
-  console.log('📁 Ensuring ROMs directory exists...');
   ensureRomsDirectory();
   
-  console.log('🔐 Creating authentication window...');
-  createAuthWindow();
+  // Try to load existing authentication
+  const authData = await loadAuthData();
+  if (authData && authData.user) {
+    // User is already authenticated, go straight to main window
+    isAuthenticated = true;
+    userInfo = authData.user;
+    authTokens = authData.tokens;
+    createMainWindow();
+  } else {
+    // No valid authentication, show auth window
+    createAuthWindow();
+  }
   
-  console.log('📊 Starting JSON file monitoring...');
   monitorJsonFile();
-  
-  console.log('✅ App initialization complete!');
 });
 
 app.on('window-all-closed', () => {

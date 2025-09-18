@@ -121,6 +121,10 @@
             display: none;
         }
 
+        .success img {
+            border: 2px solid #27ae60;
+        }
+
         .footer {
             margin-top: 30px;
             color: #999;
@@ -159,8 +163,6 @@
         const { ipcRenderer } = require('electron');
 
         document.getElementById('googleSignIn').addEventListener('click', async () => {
-            console.log('🔐 Auth Window: Sign in button clicked');
-            
             const button = document.getElementById('googleSignIn');
             const loading = document.getElementById('loading');
             const error = document.getElementById('error');
@@ -173,29 +175,33 @@
             // Show loading
             button.style.display = 'none';
             loading.style.display = 'block';
-            console.log('⏳ Auth Window: Showing loading state');
 
             try {
-                console.log('📞 Auth Window: Calling ipcRenderer.invoke("authenticate")');
                 const result = await ipcRenderer.invoke('authenticate');
-                console.log('📥 Auth Window: Received authentication result:', result);
                 
                 if (result.success) {
-                    console.log('✅ Auth Window: Authentication successful!');
-                    success.textContent = `✅ Welcome, ${result.user.name}! Opening main app...`;
+                    // Create welcome message with profile picture
+                    let welcomeMessage = `✅ Welcome, ${result.user.name}! Opening main app...`;
+                    if (result.user.picture) {
+                        welcomeMessage = `
+                            <div style="display: flex; align-items: center; gap: 10px;">
+                                <img src="${result.user.picture}" alt="${result.user.name}" style="width: 30px; height: 30px; border-radius: 50%; object-fit: cover;">
+                                <span>Welcome, ${result.user.name}! Opening main app...</span>
+                            </div>
+                        `;
+                    }
+                    success.innerHTML = welcomeMessage;
                     success.style.display = 'block';
                     
                     // Close auth window and open main window after a short delay
                     setTimeout(() => {
-                        console.log('🚪 Auth Window: Closing window...');
                         window.close();
                     }, 2000);
                 } else {
-                    console.log('❌ Auth Window: Authentication failed:', result.error);
                     throw new Error(result.error || 'Authentication failed');
                 }
             } catch (err) {
-                console.error('💥 Auth Window: Authentication error:', err);
+                console.error('Authentication error:', err);
                 error.textContent = err.message;
                 error.style.display = 'block';
                 

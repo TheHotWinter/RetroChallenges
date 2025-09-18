@@ -1,0 +1,14 @@
+{
+  "user": {
+    "name": "",
+    "email": "",
+    "id": "",
+    "picture": ""
+  },
+  "tokens": {
+    "access_token": "",
+    "refresh_token": "",
+    "expires_at": 1758233782646
+  },
+  "timestamp": 1758230183646
+}
