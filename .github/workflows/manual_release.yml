@@ -68,6 +68,7 @@ jobs:
       - name: Create release and upload artifacts
         uses: ncipollo/release-action@v1
         with:
+          token: ${{ secrets.GITHUB_TOKEN }}
           tag: ${{ github.event.inputs.tag || format('manual-{0}', github.run_id) }}
           name: ${{ github.event.inputs.name || format('Manual Release {0}', github.run_id) }}
           files: release_artifacts/**
