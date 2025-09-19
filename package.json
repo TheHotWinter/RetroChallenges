@@ -18,11 +18,11 @@
   "author": "RetroChallenges Team",
   "license": "MIT",
   "devDependencies": {
-    "electron-builder": "^24.6.4"
+    "electron-builder": "^24.6.4",
+    "electron": "^38.1.2"
   },
   "dependencies": {
-    "axios": "^1.6.0",
-    "electron": "^38.1.2"
+    "axios": "^1.6.0"
   },
   "build": {
     "appId": "com.retrochallenges.app",
