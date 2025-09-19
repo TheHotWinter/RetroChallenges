@@ -68,11 +68,11 @@ jobs:
       - name: Create release and upload artifacts
         uses: ncipollo/release-action@v1
         with:
-          token: ${{ secrets.GITHUB_TOKEN }}
+          token: ${{ secrets.GH_TOKEN || secrets.GITHUB_TOKEN }}
           tag: ${{ github.event.inputs.tag || format('manual-{0}', github.run_id) }}
           name: ${{ github.event.inputs.name || format('Manual Release {0}', github.run_id) }}
           files: release_artifacts/**
           draft: ${{ github.event.inputs.draft }}
           prerelease: ${{ github.event.inputs.prerelease }}
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.GH_TOKEN || secrets.GITHUB_TOKEN }}
