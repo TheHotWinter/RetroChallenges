@@ -45,6 +45,7 @@ function createMainWindow() {
   mainWindow = new BrowserWindow({
     width: 800,
     height: 600,
+    show: false,
     webPreferences: {
       nodeIntegration: true,
       contextIsolation: false,
@@ -55,6 +56,14 @@ function createMainWindow() {
   });
 
   mainWindow.loadFile('index.html');
+
+  // Show window when ready
+  mainWindow.once('ready-to-show', () => {
+    console.log('Window ready to show, displaying...');
+    mainWindow.show();
+    mainWindow.focus();
+    console.log('Window should now be visible');
+  });
 
   // Open DevTools in development
   if (process.env.NODE_ENV === 'development') {
@@ -245,19 +254,14 @@ async function fetchChallenges() {
 
 // Ensure ROMs directory exists
 function ensureRomsDirectory() {
-  if (!fs.existsSync(APP_CONFIG.romsPath)) {
-    try {
+
+  try {
+    if (!fs.existsSync(APP_CONFIG.romsPath)) {
       fs.mkdirSync(APP_CONFIG.romsPath, { recursive: true });
-    } catch (err) {
-      // If directory creation fails, write an error log to userData so packaged app can be diagnosed
-      try {
-        const logPath = path.join(app.getPath('userData'), 'error.log');
-        fs.appendFileSync(logPath, `${new Date().toISOString()} - ensureRomsDirectory failed: ${err.stack || err}\n`);
-      } catch (e) {
-        // swallow
-      }
-      throw err;
     }
+  } catch (error) {
+    console.error('Error creating ROMs directory:', error);
+    // Continue without ROMs directory
   }
 }
 
