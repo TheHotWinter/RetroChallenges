@@ -28,9 +28,10 @@ const APP_CONFIG = {
   webhookUrl: 'https://your-webhook-url.com', // Replace with actual webhook URL
   emuhawkPath: '', // Will be set by user
   challengesUrl: CONFIG.challenges.url,
-  jsonOutputPath: path.join(__dirname, 'challenge_data.json'),
-  romsPath: path.join(__dirname, 'roms'), // Directory for ROM files
-  authDataPath: path.join(__dirname, 'auth_data.json') // File to store authentication data
+  // Use userData (writable) locations for files and directories so packaged apps don't write inside the ASAR
+  jsonOutputPath: path.join(app.getPath('userData'), 'challenge_data.json'),
+  romsPath: path.join(app.getPath('userData'), 'roms'), // Directory for ROM files
+  authDataPath: path.join(app.getPath('userData'), 'auth_data.json') // File to store authentication data
 };
 
 let mainWindow;
@@ -245,7 +246,18 @@ async function fetchChallenges() {
 // Ensure ROMs directory exists
 function ensureRomsDirectory() {
   if (!fs.existsSync(APP_CONFIG.romsPath)) {
-    fs.mkdirSync(APP_CONFIG.romsPath, { recursive: true });
+    try {
+      fs.mkdirSync(APP_CONFIG.romsPath, { recursive: true });
+    } catch (err) {
+      // If directory creation fails, write an error log to userData so packaged app can be diagnosed
+      try {
+        const logPath = path.join(app.getPath('userData'), 'error.log');
+        fs.appendFileSync(logPath, `${new Date().toISOString()} - ensureRomsDirectory failed: ${err.stack || err}\n`);
+      } catch (e) {
+        // swallow
+      }
+      throw err;
+    }
   }
 }
 
