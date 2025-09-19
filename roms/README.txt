@@ -7,6 +7,8 @@ IMPORTANT ROM NAMING REQUIREMENTS:
 - For Castlevania game, the ROM file must be named exactly: castlevania.nes
 - For Super Mario Bros game, the ROM file must be named exactly: super_mario_bros.nes
 
+NOTE: Challenge scripts and assets are automatically downloaded to the 'challenges' folder when you click the Refresh button in the app.
+
 LEGAL DISCLAIMER:
 ================
 

@@ -102,6 +102,9 @@ temp/
 roms/*.nes
 roms/*.rom
 
+# Downloaded challenges and assets (auto-downloaded from GitHub)
+challenges/
+
 # Challenge data (user-specific)
 challenge_data.json
 

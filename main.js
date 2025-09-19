@@ -18,14 +18,13 @@ try {
       redirectUri: 'http://localhost:8080/callback'
     },
     challenges: {
-      url: 'https://retrochallenges.com/challenges/challenges.json'
+      url: 'https://raw.githubusercontent.com/mattd1980/retrochallenges-assets/refs/heads/main/challenges.json'
     }
   };
 }
 
 // App configuration
 const APP_CONFIG = {
-  webhookUrl: 'https://your-webhook-url.com', // Replace with actual webhook URL
   emuhawkPath: '', // Will be set by user
   challengesUrl: CONFIG.challenges.url,
   // Use userData (writable) locations for files and directories so packaged apps don't write inside the ASAR
@@ -253,6 +252,134 @@ async function fetchChallenges() {
   }
 }
 
+// Download assets from GitHub repository recursively
+async function downloadAssetsFromRepo() {
+  try {
+    const baseRepoUrl = 'https://api.github.com/repos/mattd1980/retrochallenges-assets/contents';
+    
+    // Recursive function to download files and folders
+    async function downloadRecursive(repoPath = '', localPath = '') {
+      const url = repoPath ? `${baseRepoUrl}/${repoPath}` : baseRepoUrl;
+      
+      const response = await axios.get(url, {
+        headers: {
+          'User-Agent': 'RetroChallenges-App/1.0',
+          'Accept': 'application/vnd.github.v3+json'
+        }
+      });
+      
+      const items = response.data;
+      
+      for (const item of items) {
+        // Skip README.md files
+        if (item.name === 'README.md') {
+          continue;
+        }
+        
+        if (item.type === 'dir') {
+          // Recursively download directory contents
+          console.log(`Processing directory: ${item.name}`);
+          await downloadRecursive(item.path, localPath);
+        } else {
+          // Determine target directory based on file path and type
+          let targetDir;
+          let fileName = item.name;
+          
+          if (repoPath.includes('/nes/')) {
+            // NES game files - preserve exact structure: nes/[game-name]/[challenge-name]/
+            const pathParts = repoPath.split('/');
+            const nesIndex = pathParts.indexOf('nes');
+            if (nesIndex !== -1 && pathParts.length > nesIndex + 2) {
+              const gameName = pathParts[nesIndex + 1];
+              const challengeName = pathParts[nesIndex + 2];
+              
+              if (item.name === 'main.lua') {
+                // Keep main.lua as main.lua in the challenge folder
+                fileName = 'main.lua';
+                targetDir = path.join(__dirname, 'challenges', 'nes', gameName, challengeName);
+              } else {
+                // Other files go to their respective subfolders (assets/, savestates/, etc.)
+                const remainingPath = pathParts.slice(nesIndex + 3).join('/');
+                if (remainingPath) {
+                  targetDir = path.join(__dirname, 'challenges', 'nes', gameName, challengeName, remainingPath);
+                } else {
+                  targetDir = path.join(__dirname, 'challenges', 'nes', gameName, challengeName);
+                }
+              }
+            } else {
+              // Fallback for files in nes root
+              targetDir = path.join(__dirname, 'challenges', 'nes');
+            }
+          } else if (repoPath.includes('/utils/')) {
+            // Utility scripts go to utils folder
+            targetDir = path.join(__dirname, 'challenges', 'utils');
+          } else if (repoPath.includes('/assets/')) {
+            // Generic assets
+            targetDir = path.join(__dirname, 'challenges', 'assets');
+          } else if (repoPath.includes('/snes/')) {
+            // SNES challenges
+            const pathParts = repoPath.split('/');
+            const snesIndex = pathParts.indexOf('snes');
+            if (snesIndex !== -1 && pathParts.length > snesIndex + 2) {
+              const gameName = pathParts[snesIndex + 1];
+              const challengeName = pathParts[snesIndex + 2];
+              const remainingPath = pathParts.slice(snesIndex + 3).join('/');
+              if (remainingPath) {
+                targetDir = path.join(__dirname, 'challenges', 'snes', gameName, challengeName, remainingPath);
+              } else {
+                targetDir = path.join(__dirname, 'challenges', 'snes', gameName, challengeName);
+              }
+            } else {
+              targetDir = path.join(__dirname, 'challenges', 'snes');
+            }
+          } else if (item.name === 'challenges.json') {
+            // challenges.json goes to root of challenges folder
+            targetDir = path.join(__dirname, 'challenges');
+          } else {
+            // Default to challenges root
+            targetDir = path.join(__dirname, 'challenges');
+          }
+          
+          // Ensure target directory exists
+          if (!fs.existsSync(targetDir)) {
+            fs.mkdirSync(targetDir, { recursive: true });
+          }
+          
+          // Download file
+          const filePath = path.join(targetDir, fileName);
+          
+          // Handle different content types
+          if (item.content) {
+            // File content is base64 encoded in the API response
+            const content = Buffer.from(item.content, 'base64');
+            fs.writeFileSync(filePath, content);
+          } else if (item.download_url) {
+            // Download file content directly
+            const fileResponse = await axios.get(item.download_url, {
+              headers: {
+                'User-Agent': 'RetroChallenges-App/1.0'
+              },
+              responseType: 'arraybuffer'
+            });
+            
+            fs.writeFileSync(filePath, Buffer.from(fileResponse.data));
+          }
+          
+          console.log(`Downloaded: ${fileName} to ${targetDir}`);
+        }
+      }
+    }
+    
+    // Start recursive download from root
+    await downloadRecursive();
+    
+    return { success: true, message: 'Assets downloaded successfully with proper structure' };
+  } catch (error) {
+    console.error('Error downloading assets:', error.message);
+    return { success: false, error: error.message };
+  }
+}
+
 // Ensure ROMs directory exists
 function ensureRomsDirectory() {
 
@@ -445,8 +572,8 @@ function monitorJsonFile() {
           }
           
           
-          // Send to webhook
-          await sendToWebhook(data);
+          // Log challenge completion
+          console.log('Challenge completed:', data);
           
           // Notify renderer
           if (mainWindow) {
@@ -460,26 +587,6 @@ function monitorJsonFile() {
   });
 }
 
-// Send data to webhook
-async function sendToWebhook(data) {
-  try {
-    const response = await axios.post(APP_CONFIG.webhookUrl, {
-      ...data,
-      timestamp: new Date().toISOString(),
-      appVersion: app.getVersion()
-    }, {
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      timeout: 10000
-    });
-    
-    return true;
-  } catch (error) {
-    console.error('Webhook error:', error.message);
-    return false;
-  }
-}
 
 // IPC Handlers - Register after app is ready
 function registerIpcHandlers() {
@@ -517,29 +624,16 @@ function registerIpcHandlers() {
   });
 
   ipcMain.handle('fetch-challenges', async () => {
+    // Download assets first, then fetch challenges
+    const assetResult = await downloadAssetsFromRepo();
+    if (!assetResult.success) {
+      console.warn('Failed to download assets:', assetResult.error);
+    }
+    
     return await fetchChallenges();
   });
 
-  ipcMain.handle('select-rom-file', async () => {
-    const result = await dialog.showOpenDialog(mainWindow, {
-      title: 'Select ROM File',
-      filters: [
-        { name: 'NES ROM Files', extensions: ['nes'] },
-        { name: 'All Files', extensions: ['*'] }
-      ],
-      properties: ['openFile']
-    });
 
-    if (!result.canceled && result.filePaths.length > 0) {
-      return result.filePaths[0];
-    }
-    return null;
-  });
-
-  ipcMain.handle('get-rom-path', (event, romFileName) => {
-    const romPath = path.join(APP_CONFIG.romsPath, romFileName);
-    return fs.existsSync(romPath) ? romPath : null;
-  });
 
   ipcMain.handle('launch-challenge', async (event, gameData, challengeData) => {
     try {
@@ -549,10 +643,10 @@ function registerIpcHandlers() {
         throw new Error(`ROM file not found: ${gameData.rom}. Please add it to the roms folder.`);
       }
 
-      // Get Lua script path (assuming it's in a scripts folder)
-      const luaPath = path.join(__dirname, 'scripts', challengeData.lua);
+      // Get Lua script path (assuming it's in challenges/nes/[game]/[challenge]/main.lua)
+      const luaPath = path.join(__dirname, 'challenges', 'nes', gameData.name.toLowerCase().replace(/\s+/g, '_'), challengeData.name.toLowerCase().replace(/\s+/g, '_'), 'main.lua');
       if (!fs.existsSync(luaPath)) {
-        throw new Error(`Lua script not found: ${challengeData.lua}. Please add it to the scripts folder.`);
+        throw new Error(`Lua script not found: ${challengeData.lua}. Please refresh challenges to download it.`);
       }
 
       const process = launchEmuHawk(romPath, luaPath);
@@ -573,9 +667,7 @@ function registerIpcHandlers() {
 
   ipcMain.handle('get-config', () => {
     return {
-      emuhawkPath: APP_CONFIG.emuhawkPath,
-      luaScriptPath: APP_CONFIG.luaScriptPath,
-      webhookUrl: APP_CONFIG.webhookUrl
+      emuhawkPath: APP_CONFIG.emuhawkPath
     };
   });
 
@@ -592,10 +684,6 @@ function registerIpcHandlers() {
     }
   });
 
-  ipcMain.handle('set-webhook-url', (event, url) => {
-    APP_CONFIG.webhookUrl = url;
-    return true;
-  });
 }
 
 // App event handlers
