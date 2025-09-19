@@ -32,7 +32,6 @@
     },
     "files": [
       "**/*",
-      "!node_modules/**/*",
       "!dist/**/*"
     ],
     "win": {
