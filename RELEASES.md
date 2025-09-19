@@ -1,6 +1,6 @@
 # Releases
 
-This file explains the release process for RetroChallenges: manual release steps, CI behaviour, and troubleshooting notes for local builds.
+This file explains the release process for RetroChallenges: manual release steps, CI behaviour, and troubleshooting notes for local builds. 
 
 Manual release (recommended for maintainers)
 1. Prepare a clean branch with your changes and open a PR targeting `main`.
