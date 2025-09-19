@@ -51,8 +51,9 @@ function createMainWindow() {
       contextIsolation: false,
       enableRemoteModule: true
     },
-    icon: path.join(__dirname, 'assets', 'icon.png'),
-    title: 'RetroChallenges'
+    icon: path.join(__dirname, 'assets', 'favicon.ico'),
+    title: 'RetroChallenges',
+    autoHideMenuBar: true
   });
 
   mainWindow.loadFile('index.html');
@@ -576,6 +577,19 @@ function registerIpcHandlers() {
       luaScriptPath: APP_CONFIG.luaScriptPath,
       webhookUrl: APP_CONFIG.webhookUrl
     };
+  });
+
+  ipcMain.handle('open-rom-folder', async () => {
+    try {
+      // Ensure the ROMs directory exists
+      ensureRomsDirectory();
+      
+      // Open the ROMs folder in the system file explorer
+      shell.openPath(APP_CONFIG.romsPath);
+    } catch (error) {
+      console.error('Error opening ROM folder:', error);
+      throw error;
+    }
   });
 
   ipcMain.handle('set-webhook-url', (event, url) => {
