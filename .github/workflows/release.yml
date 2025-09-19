@@ -51,7 +51,7 @@ jobs:
           # Tag and name based on run and commit since this workflow runs on pushes to testing-build
           tag: testing-${{ github.run_number }}-${{ github.sha }}
           name: Release for testing-build (run ${{ github.run_number }})
-          files: release_artifacts/**
+          artifacts: release_artifacts/**
           draft: false
           prerelease: false
         env:
