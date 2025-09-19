@@ -29,8 +29,8 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Build (electron-builder)
-        run: npm run build
+      - name: Build (electron-builder, no publish)
+        run: npm run dist
 
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
@@ -52,10 +52,12 @@ jobs:
       - name: Create release and upload artifacts
         uses: ncipollo/release-action@v1
         with:
-          # Create a release tag derived from PR number + merge commit
-          token: ${{ secrets.GITHUB_TOKEN }}
+          # Prefer a user-provided personal access token stored as GH_TOKEN, fall back to the automatic GITHUB_TOKEN
+          token: ${{ secrets.GH_TOKEN || secrets.GITHUB_TOKEN }}
           tag: pr-${{ github.event.pull_request.number }}-${{ github.event.pull_request.merge_commit_sha }}
           name: Release for PR #${{ github.event.pull_request.number }}
           files: release_artifacts/**
           draft: false
           prerelease: false
+        env:
+          GH_TOKEN: ${{ secrets.GH_TOKEN || secrets.GITHUB_TOKEN }}
