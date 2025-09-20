@@ -23,6 +23,16 @@ try {
   };
 }
 
+// Allow overriding sensitive values via environment variables (useful for CI or local envs)
+// Example env names: GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, GOOGLE_REDIRECT_URI, CHALLENGES_URL, WEBHOOK_URL
+CONFIG.google = CONFIG.google || {};
+CONFIG.google.clientId = process.env.GOOGLE_CLIENT_ID || CONFIG.google.clientId;
+CONFIG.google.clientSecret = process.env.GOOGLE_CLIENT_SECRET || CONFIG.google.clientSecret;
+CONFIG.google.redirectUri = process.env.GOOGLE_REDIRECT_URI || CONFIG.google.redirectUri;
+CONFIG.challenges = CONFIG.challenges || {};
+CONFIG.challenges.url = process.env.CHALLENGES_URL || CONFIG.challenges.url;
+
+
 // App configuration
 const APP_CONFIG = {
   webhookUrl: 'https://your-webhook-url.com', // Replace with actual webhook URL
