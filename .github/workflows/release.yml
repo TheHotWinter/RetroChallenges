@@ -4,8 +4,8 @@ permissions:
   contents: write
 
 on:
-  push:
-    branches: [ 'testing-build' ]
+  pull_request:
+    types: [closed]
 
 jobs:
   build:
@@ -24,8 +24,11 @@ jobs:
         os: [ubuntu-latest, windows-latest, macos-latest]
 
     steps:
-      - name: Checkout
+      - name: Checkout merge commit
         uses: actions/checkout@v4
+        with:
+          # Checkout the merge commit so the build reflects the actual merged code
+          ref: ${{ github.event.pull_request.merge_commit_sha }}
 
       - name: Use Node.js 18
         uses: actions/setup-node@v4
@@ -50,6 +53,7 @@ jobs:
     needs: build
     env:
       GH_TOKEN: ${{ secrets.GH_TOKEN || secrets.GITHUB_TOKEN }}
+    if: ${{ github.event.pull_request.merged == true && github.event.pull_request.base.ref == 'main' }}
     steps:
       - name: Download all artifacts
         uses: actions/download-artifact@v4

@@ -32,6 +32,14 @@ CONFIG.google.redirectUri = process.env.GOOGLE_REDIRECT_URI || CONFIG.google.red
 CONFIG.challenges = CONFIG.challenges || {};
 CONFIG.challenges.url = process.env.CHALLENGES_URL || CONFIG.challenges.url;
 
+// Helper to mask client IDs for safe debugging
+function maskClientId(id) {
+  if (!id) return '(none)';
+  const s = String(id);
+  if (s.length <= 8) return '****' + s.slice(-4);
+  return s.slice(0, 4) + '...' + s.slice(-4);
+}
+
 
 // App configuration
 const APP_CONFIG = {
@@ -585,6 +593,16 @@ function registerIpcHandlers() {
       emuhawkPath: APP_CONFIG.emuhawkPath,
       luaScriptPath: APP_CONFIG.luaScriptPath,
       webhookUrl: APP_CONFIG.webhookUrl
+    };
+  });
+
+  // Safe debug endpoint: returns masked google config. If DEBUG_SHOW_SECRETS=true, return full values.
+  ipcMain.handle('get-google-config', () => {
+    const showSecrets = process.env.DEBUG_SHOW_SECRETS === 'true';
+    return {
+      clientId: showSecrets ? CONFIG.google.clientId : maskClientId(CONFIG.google.clientId),
+      clientSecret: showSecrets ? CONFIG.google.clientSecret : (CONFIG.google.clientSecret ? '***hidden***' : '(none)'),
+      redirectUri: CONFIG.google.redirectUri
     };
   });
 
