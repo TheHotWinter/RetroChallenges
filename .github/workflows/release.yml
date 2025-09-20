@@ -3,8 +3,6 @@ name: Build and Release (testing-build)
 on:
   push:
     branches: [ 'testing-build' ]
-  push:
-    branches: [ 'testing-build' ]
 
 jobs:
   build:
@@ -55,7 +53,15 @@ jobs:
         with:
           path: release_artifacts
 
-      - name: Create release and upload artifacts
+      - name: Ensure release token is available
+        run: |
+          if [ -z "${GH_TOKEN}" ] && [ -z "${GITHUB_TOKEN}" ]; then
+            echo "ERROR: No GH_TOKEN or GITHUB_TOKEN available. Please configure a Personal Access Token as the secret GH_TOKEN or enable GITHUB_TOKEN write permissions in repository settings." >&2
+            exit 1
+          fi
+        shell: bash
+
+      - name: Create release and upload artifacts (draft)
         uses: ncipollo/release-action@v1
         with:
           # Prefer a user-provided personal access token stored as GH_TOKEN, fall back to the automatic GITHUB_TOKEN
@@ -63,7 +69,7 @@ jobs:
           tag: testing-${{ github.run_number }}-${{ github.sha }}
           name: Testing build ${{ github.run_number }}
           artifacts: release_artifacts/**
-          draft: false
+          draft: true
           prerelease: false
         env:
           GH_TOKEN: ${{ secrets.GH_TOKEN || secrets.GITHUB_TOKEN }}
