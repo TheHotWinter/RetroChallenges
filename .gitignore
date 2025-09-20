@@ -102,11 +102,18 @@ temp/
 roms/*.nes
 roms/*.rom
 
-# Challenge data (user-specific)
-challenge_data.json
+# Downloaded challenges and assets (auto-downloaded from GitHub)
+challenges/
 
-# Authentication data (user-specific, contains sensitive tokens)
+# User-specific data files (these are now stored in userData folder)
+challenge_data.json
 auth_data.json
+app_config.json
+
+# Temporary files
+temp-*
+*.tmp
+*.temp
 
 # Test files
 test-*.js
