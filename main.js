@@ -23,6 +23,16 @@ try {
   };
 }
 
+// Allow overriding sensitive values via environment variables (useful for CI or local envs)
+// Example env names: GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, GOOGLE_REDIRECT_URI, CHALLENGES_URL, WEBHOOK_URL
+CONFIG.google = CONFIG.google || {};
+CONFIG.google.clientId = process.env.GOOGLE_CLIENT_ID || CONFIG.google.clientId;
+CONFIG.google.clientSecret = process.env.GOOGLE_CLIENT_SECRET || CONFIG.google.clientSecret;
+CONFIG.google.redirectUri = process.env.GOOGLE_REDIRECT_URI || CONFIG.google.redirectUri;
+CONFIG.challenges = CONFIG.challenges || {};
+CONFIG.challenges.url = process.env.CHALLENGES_URL || CONFIG.challenges.url;
+
+
 // App configuration
 const APP_CONFIG = {
   webhookUrl: 'https://your-webhook-url.com', // Replace with actual webhook URL
@@ -99,18 +109,14 @@ function createAuthWindow() {
 // Google OAuth implementation - Real OAuth flow with browser window
 async function authenticateWithGoogle() {
   try {
-    // Create OAuth URL
-    const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?` +
-      `client_id=${CONFIG.google.clientId}&` +
-      `redirect_uri=${encodeURIComponent(CONFIG.google.redirectUri)}&` +
-      `response_type=code&` +
-      `scope=openid%20email%20profile&` +
-      `access_type=offline`;
-    
-    // Create a new browser window for OAuth
+    // Server-side OAuth: open the hosted login page which will perform the
+    // authorization code exchange and store user info in the server session.
+    const SERVER_LOGIN_URL = 'https://retrochallenges.com/public/auth/google/login.php';
+    const SERVER_USERINFO_URL = 'https://retrochallenges.com/public/auth/google/userinfo.php';
+
     const authWindow = new BrowserWindow({
-      width: 500,
-      height: 600,
+      width: 600,
+      height: 700,
       webPreferences: {
         nodeIntegration: false,
         contextIsolation: true
@@ -119,48 +125,46 @@ async function authenticateWithGoogle() {
       modal: true,
       resizable: false
     });
-    
-    // Load the OAuth URL
-    await authWindow.loadURL(authUrl);
-    
-    // Handle the OAuth callback
+
+    // Load the server login URL. The server will redirect to Google and back.
+    await authWindow.loadURL(SERVER_LOGIN_URL);
+
+    // Wait for the success page that contains a window.USER JSON blob.
     return new Promise((resolve) => {
-      authWindow.webContents.on('will-redirect', (event, url) => {
-        // Check if this is the callback URL
-        if (url.includes('code=')) {
-          // Extract the authorization code
-          const urlParams = new URLSearchParams(url.split('?')[1]);
-          const code = urlParams.get('code');
-          
-          if (code) {
-            
-            // Exchange code for tokens and get user info
-            exchangeCodeForTokens(code, CONFIG.google.clientId)
-              .then(result => {
-                authWindow.close();
-                resolve(result);
-              })
-              .catch(error => {
-                console.error('Token exchange failed:', error);
-                authWindow.close();
-                resolve({ success: false, error: error.message });
-              });
-          } else {
-            console.error('No authorization code found in URL');
+      // When a page finishes loading, try to read the embedded user object.
+      authWindow.webContents.on('did-finish-load', async () => {
+        try {
+          // Evaluate a small script to check for window.USER
+          const hasUser = await authWindow.webContents.executeJavaScript('typeof window.USER !== "undefined"');
+          if (hasUser) {
+            // Read the user object from the page
+            const user = await authWindow.webContents.executeJavaScript('window.USER');
+
+            // Close the auth window
             authWindow.close();
-            resolve({ success: false, error: 'No authorization code received' });
+
+            // Persist minimal auth data locally (no tokens are stored client-side)
+            isAuthenticated = true;
+            userInfo = user;
+
+            // Save a local auth record without tokens to note user identity
+            saveAuthData(user, null);
+
+            resolve({ success: true, user: user, accessToken: null });
+            return;
           }
+        } catch (e) {
+          // Ignore script execution errors while pages that don't include USER load
         }
       });
-      
-      // Handle window close
+
+      // If user closes window, consider authentication cancelled
       authWindow.on('closed', () => {
         resolve({ success: false, error: 'Authentication cancelled' });
       });
     });
-    
   } catch (error) {
-    console.error('OAuth authentication error:', error);
+    console.error('OAuth authentication error (server-based):', error);
     return { success: false, error: error.message };
   }
 }

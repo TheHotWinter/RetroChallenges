@@ -1,5 +1,8 @@
 name: Manual Build and Release
 
+permissions:
+  contents: write
+
 on:
   workflow_dispatch:
     inputs:
@@ -28,6 +31,13 @@ jobs:
   build:
     name: Build on ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID || '' }}
+      GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET || '' }}
+      GOOGLE_REDIRECT_URI: ${{ secrets.GOOGLE_REDIRECT_URI || '' }}
+      WEBHOOK_URL: ${{ secrets.WEBHOOK_URL || '' }}
+      CHALLENGES_URL: ${{ secrets.CHALLENGES_URL || '' }}
     strategy:
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
@@ -59,11 +69,25 @@ jobs:
     name: Create GitHub Release (manual)
     runs-on: ubuntu-latest
     needs: build
+    env:
+      GH_TOKEN: ${{ secrets.GH_TOKEN || secrets.GITHUB_TOKEN }}
     steps:
       - name: Download all artifacts
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           path: release_artifacts
+      - name: Compress artifacts into single archives
+        run: |
+          mkdir -p release_artifacts/archives
+          for d in release_artifacts/dist-*; do
+            if [ -d "$d" ]; then
+              platform=$(basename "$d")
+              archive="release_artifacts/archives/${platform}-${{ github.run_number }}.zip"
+              echo "Creating $archive from $d"
+              (cd "$d" && zip -r "../archives/$(basename "$archive")" .)
+            fi
+          done
+        shell: bash
 
       - name: Create release and upload artifacts
         uses: ncipollo/release-action@v1
@@ -71,7 +95,7 @@ jobs:
           token: ${{ secrets.GH_TOKEN || secrets.GITHUB_TOKEN }}
           tag: ${{ github.event.inputs.tag || format('manual-{0}', github.run_id) }}
           name: ${{ github.event.inputs.name || format('Manual Release {0}', github.run_id) }}
-          files: release_artifacts/**
+          artifacts: release_artifacts/archives/*.zip
           draft: ${{ github.event.inputs.draft }}
           prerelease: ${{ github.event.inputs.prerelease }}
         env:
