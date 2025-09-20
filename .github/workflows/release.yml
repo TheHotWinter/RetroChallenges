@@ -64,6 +64,19 @@ jobs:
           fi
         shell: bash
 
+      - name: Compress artifacts into single archives
+        run: |
+          mkdir -p release_artifacts/archives
+          for d in release_artifacts/dist-*; do
+            if [ -d "$d" ]; then
+              platform=$(basename "$d")
+              archive="release_artifacts/archives/${platform}-${{ github.run_number }}.zip"
+              echo "Creating $archive from $d"
+              (cd "$d" && zip -r "../archives/$(basename "$archive")" .)
+            fi
+          done
+        shell: bash
+
       - name: Create release and upload artifacts (draft)
         uses: ncipollo/release-action@v1
         with:
@@ -71,7 +84,7 @@ jobs:
           token: ${{ secrets.GH_TOKEN || secrets.GITHUB_TOKEN }}
           tag: testing-${{ github.run_number }}-${{ github.sha }}
           name: Testing build ${{ github.run_number }}
-          artifacts: release_artifacts/**
+          artifacts: release_artifacts/archives/*.zip
           draft: true
           prerelease: false
         env:

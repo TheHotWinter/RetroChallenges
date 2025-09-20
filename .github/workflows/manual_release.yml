@@ -76,6 +76,18 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           path: release_artifacts
+      - name: Compress artifacts into single archives
+        run: |
+          mkdir -p release_artifacts/archives
+          for d in release_artifacts/dist-*; do
+            if [ -d "$d" ]; then
+              platform=$(basename "$d")
+              archive="release_artifacts/archives/${platform}-${{ github.run_number }}.zip"
+              echo "Creating $archive from $d"
+              (cd "$d" && zip -r "../archives/$(basename "$archive")" .)
+            fi
+          done
+        shell: bash
 
       - name: Create release and upload artifacts
         uses: ncipollo/release-action@v1
@@ -83,7 +95,7 @@ jobs:
           token: ${{ secrets.GH_TOKEN || secrets.GITHUB_TOKEN }}
           tag: ${{ github.event.inputs.tag || format('manual-{0}', github.run_id) }}
           name: ${{ github.event.inputs.name || format('Manual Release {0}', github.run_id) }}
-          artifacts: release_artifacts/**
+          artifacts: release_artifacts/archives/*.zip
           draft: ${{ github.event.inputs.draft }}
           prerelease: ${{ github.event.inputs.prerelease }}
         env:
