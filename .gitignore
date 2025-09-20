@@ -105,11 +105,15 @@ roms/*.rom
 # Downloaded challenges and assets (auto-downloaded from GitHub)
 challenges/
 
-# Challenge data (user-specific)
+# User-specific data files (these are now stored in userData folder)
 challenge_data.json
-
-# Authentication data (user-specific, contains sensitive tokens)
 auth_data.json
+app_config.json
+
+# Temporary files
+temp-*
+*.tmp
+*.temp
 
 # Test files
 test-*.js

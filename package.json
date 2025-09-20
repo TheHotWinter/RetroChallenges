@@ -13,15 +13,17 @@
     "retro",
     "challenges",
     "emuhawk",
-    "nes"
+    "nes",
+    "gaming"
   ],
   "author": "RetroChallenges Team",
   "license": "MIT",
   "devDependencies": {
-    "electron-builder": "^24.6.4",
-    "electron": "^38.1.2"
+    "electron": "^38.1.2",
+    "electron-builder": "^24.6.4"
   },
   "dependencies": {
+    "adm-zip": "^0.5.16",
     "axios": "^1.6.0"
   },
   "build": {

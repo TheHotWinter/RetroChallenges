@@ -128,6 +128,22 @@
             margin-bottom: 8px;
         }
 
+        #autoDetectEmuhawk {
+            background: #17a2b8;
+            color: white;
+            border: none;
+            padding: 8px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background-color 0.2s;
+            flex-shrink: 0;
+        }
+
+        #autoDetectEmuhawk:hover {
+            background: #138496;
+        }
+
         .file-path {
             flex: 1;
             padding: 8px 12px;
@@ -477,6 +493,7 @@
                         <label style="display: block; font-weight: 500; margin-bottom: 4px; color: #2c3e50; font-size: 0.85em;">EmuHawk</label>
                         <div class="file-selector">
                             <input type="text" class="file-path" id="emuhawkPath" placeholder="Select EmuHawk.exe" readonly>
+                            <button class="btn" id="autoDetectEmuhawk" title="Auto-detect EmuHawk">🔍</button>
                             <button class="btn" id="selectEmuhawk">Browse</button>
                         </div>
                     </div>
@@ -694,6 +711,23 @@
         }
 
         // Event listeners
+        document.getElementById('autoDetectEmuhawk').addEventListener('click', async () => {
+            try {
+                const result = await ipcRenderer.invoke('auto-detect-emuhawk');
+                if (result.success) {
+                    config.emuhawkPath = result.path;
+                    document.getElementById('emuhawkPath').value = result.path;
+                    updateStatusIndicators();
+                    showNotification('EmuHawk auto-detected successfully!', 'success');
+                } else {
+                    showNotification('EmuHawk not found in common locations. Please browse manually.', 'warning');
+                }
+            } catch (error) {
+                console.error('Error auto-detecting EmuHawk:', error);
+                showNotification('Error auto-detecting EmuHawk', 'error');
+            }
+        });
+
         document.getElementById('selectEmuhawk').addEventListener('click', async () => {
             try {
                 const path = await ipcRenderer.invoke('select-emuhawk');
@@ -709,9 +743,15 @@
 
         document.getElementById('openRomFolder').addEventListener('click', async () => {
             try {
-                await ipcRenderer.invoke('open-rom-folder');
+                const result = await ipcRenderer.invoke('open-rom-folder');
+                if (result.success) {
+                    showNotification(`ROM folder opened: ${result.path}`, 'success');
+                } else {
+                    showNotification(`Failed to open ROM folder: ${result.error}`, 'error');
+                }
             } catch (error) {
                 console.error('Error opening ROM folder:', error);
+                showNotification('Failed to open ROM folder', 'error');
             }
         });
 
@@ -731,12 +771,21 @@
                 const result = await ipcRenderer.invoke('launch-challenge', selectedGame, selectedChallenge);
                 if (result === 'success') {
                     document.getElementById('statusMessage').textContent = `Challenge "${selectedChallenge.name}" launched successfully! Waiting for completion...`;
+                } else if (result && result.success === false) {
+                    // Handle error response from main process
+                    document.getElementById('statusMessage').textContent = result.error;
+                    showNotification(result.error, 'error');
                 } else {
-                    throw new Error('Failed to launch challenge');
+                    // Handle failed launch
+                    const errorMsg = 'Failed to launch challenge: Unknown error occurred. Please check that EmuHawk is properly configured and try again.';
+                    document.getElementById('statusMessage').textContent = errorMsg;
+                    showNotification(errorMsg, 'error');
                 }
             } catch (error) {
                 console.error('Error launching challenge:', error);
-                document.getElementById('statusMessage').textContent = `Error: ${error.message}`;
+                const errorMsg = 'Failed to launch challenge: Unable to start the challenge. Please check that EmuHawk is properly configured and try again.';
+                document.getElementById('statusMessage').textContent = errorMsg;
+                showNotification(errorMsg, 'error');
             } finally {
                 loading.style.display = 'none';
                 launchBtn.disabled = false;

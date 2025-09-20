@@ -1,0 +1,25 @@
+{
+  "games": [
+    {
+      "name": "Castlevania",
+      "description": "Classic vampire hunting action platformer",
+      "rom" : "castlevania.nes",
+      "challenges": [
+        {
+          "name": "Get 5000 points!",
+          "description": "Score at least 5000 points in a single playthrough",
+          "lua": "nes\\castlevania\\5000pts\\5000pts.lua",
+          "difficulty": "Easy",
+          "estimatedTime": "5-10 minutes"
+        }
+      ]
+    }    
+  ],
+  "metadata": {
+    "version": "1.0.0",
+    "lastUpdated": "2025-09-18T17:30:00Z",
+    "totalGames": 1,
+    "totalChallenges": 2,
+    "difficultyLevels": ["Easy", "Medium", "Hard", "Very Hard"]
+  }
+}

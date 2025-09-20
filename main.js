@@ -23,8 +23,7 @@ try {
   };
 }
 
-// Allow overriding sensitive values via environment variables (useful for CI or local envs)
-// Example env names: GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, GOOGLE_REDIRECT_URI, CHALLENGES_URL, WEBHOOK_URL
+// Allow overriding sensitive values via environment variables
 CONFIG.google = CONFIG.google || {};
 CONFIG.google.clientId = process.env.GOOGLE_CLIENT_ID || CONFIG.google.clientId;
 CONFIG.google.clientSecret = process.env.GOOGLE_CLIENT_SECRET || CONFIG.google.clientSecret;
@@ -37,10 +36,13 @@ CONFIG.challenges.url = process.env.CHALLENGES_URL || CONFIG.challenges.url;
 const APP_CONFIG = {
   emuhawkPath: '', // Will be set by user
   challengesUrl: CONFIG.challenges.url,
-  // Use userData (writable) locations for files and directories so packaged apps don't write inside the ASAR
+  // Use userData locations for files and directories
+  userDataPath: app.getPath('userData'), // Base userData path
   jsonOutputPath: path.join(app.getPath('userData'), 'challenge_data.json'),
   romsPath: path.join(app.getPath('userData'), 'roms'), // Directory for ROM files
-  authDataPath: path.join(app.getPath('userData'), 'auth_data.json') // File to store authentication data
+  challengesPath: path.join(app.getPath('userData'), 'challenges'), // Directory for downloaded challenges
+  authDataPath: path.join(app.getPath('userData'), 'auth_data.json'), // File to store authentication data
+  configPath: path.join(app.getPath('userData'), 'app_config.json') // File to store app configuration
 };
 
 let mainWindow;
@@ -48,7 +50,33 @@ let emuProcess = null;
 let isAuthenticated = false;
 let userInfo = null;
 let challengesData = null;
-let authTokens = null; // Store access and refresh tokens
+let authTokens = null;
+
+// Load app configuration
+function loadAppConfig() {
+  try {
+    if (fs.existsSync(APP_CONFIG.configPath)) {
+      const configData = JSON.parse(fs.readFileSync(APP_CONFIG.configPath, 'utf8'));
+      if (configData.emuhawkPath) {
+        APP_CONFIG.emuhawkPath = configData.emuhawkPath;
+      }
+    }
+  } catch (error) {
+    console.error('Error loading app config:', error);
+  }
+}
+
+// Save app configuration
+function saveAppConfig() {
+  try {
+    const configData = {
+      emuhawkPath: APP_CONFIG.emuhawkPath
+    };
+    fs.writeFileSync(APP_CONFIG.configPath, JSON.stringify(configData, null, 2));
+  } catch (error) {
+    console.error('Error saving app config:', error);
+  }
+}
 
 function createMainWindow() {
   mainWindow = new BrowserWindow({
@@ -256,128 +284,69 @@ async function fetchChallenges() {
   }
 }
 
-// Download assets from GitHub repository recursively
+// Download assets from GitHub release zip file
 async function downloadAssetsFromRepo() {
   try {
-    const baseRepoUrl = 'https://api.github.com/repos/mattd1980/retrochallenges-assets/contents';
+    const AdmZip = require('adm-zip');
     
-    // Recursive function to download files and folders
-    async function downloadRecursive(repoPath = '', localPath = '') {
-      const url = repoPath ? `${baseRepoUrl}/${repoPath}` : baseRepoUrl;
+    // Download the latest release zip from GitHub
+    const releaseUrl = 'https://github.com/mattd1980/retrochallenges-assets/archive/refs/heads/main.zip';
+    
+    console.log('Downloading assets from GitHub release...');
+    const response = await axios.get(releaseUrl, {
+      responseType: 'arraybuffer',
+      headers: {
+        'User-Agent': 'RetroChallenges-App/1.0'
+      }
+    });
+    
+    // Create challenges directory if it doesn't exist
+    const challengesDir = APP_CONFIG.challengesPath;
+    if (fs.existsSync(challengesDir)) {
+      fs.rmSync(challengesDir, { recursive: true, force: true });
+    }
+    fs.mkdirSync(challengesDir, { recursive: true });
+    
+    // Write zip file temporarily
+    const zipPath = path.join(__dirname, 'temp-assets.zip');
+    fs.writeFileSync(zipPath, response.data);
+    
+    // Extract zip file
+    const zip = new AdmZip(zipPath);
+    const extractPath = path.join(__dirname, 'temp-extract');
+    zip.extractAllTo(extractPath, true);
+    
+    // Find the extracted folder (should be retrochallenges-assets-main)
+    const extractedFolders = fs.readdirSync(extractPath);
+    const assetsFolder = extractedFolders.find(folder => folder.startsWith('retrochallenges-assets'));
+    
+    if (!assetsFolder) {
+      throw new Error('Could not find extracted assets folder');
+    }
+    
+    // Move contents from extracted folder to challenges folder
+    const sourcePath = path.join(extractPath, assetsFolder);
+    const files = fs.readdirSync(sourcePath);
+    
+    for (const file of files) {
+      const sourceFile = path.join(sourcePath, file);
+      const targetFile = path.join(challengesDir, file);
       
-      const response = await axios.get(url, {
-        headers: {
-          'User-Agent': 'RetroChallenges-App/1.0',
-          'Accept': 'application/vnd.github.v3+json'
-        }
-      });
-      
-      const items = response.data;
-      
-      for (const item of items) {
-        // Skip README.md files
-        if (item.name === 'README.md') {
-          continue;
-        }
-        
-        if (item.type === 'dir') {
-          // Recursively download directory contents
-          console.log(`Processing directory: ${item.name}`);
-          await downloadRecursive(item.path, localPath);
-        } else {
-          // Determine target directory based on file path and type
-          let targetDir;
-          let fileName = item.name;
-          
-          if (repoPath.includes('/nes/')) {
-            // NES game files - preserve exact structure: nes/[game-name]/[challenge-name]/
-            const pathParts = repoPath.split('/');
-            const nesIndex = pathParts.indexOf('nes');
-            if (nesIndex !== -1 && pathParts.length > nesIndex + 2) {
-              const gameName = pathParts[nesIndex + 1];
-              const challengeName = pathParts[nesIndex + 2];
-              
-              if (item.name === 'main.lua') {
-                // Keep main.lua as main.lua in the challenge folder
-                fileName = 'main.lua';
-                targetDir = path.join(__dirname, 'challenges', 'nes', gameName, challengeName);
-              } else {
-                // Other files go to their respective subfolders (assets/, savestates/, etc.)
-                const remainingPath = pathParts.slice(nesIndex + 3).join('/');
-                if (remainingPath) {
-                  targetDir = path.join(__dirname, 'challenges', 'nes', gameName, challengeName, remainingPath);
-                } else {
-                  targetDir = path.join(__dirname, 'challenges', 'nes', gameName, challengeName);
-                }
-              }
-            } else {
-              // Fallback for files in nes root
-              targetDir = path.join(__dirname, 'challenges', 'nes');
-            }
-          } else if (repoPath.includes('/utils/')) {
-            // Utility scripts go to utils folder
-            targetDir = path.join(__dirname, 'challenges', 'utils');
-          } else if (repoPath.includes('/assets/')) {
-            // Generic assets
-            targetDir = path.join(__dirname, 'challenges', 'assets');
-          } else if (repoPath.includes('/snes/')) {
-            // SNES challenges
-            const pathParts = repoPath.split('/');
-            const snesIndex = pathParts.indexOf('snes');
-            if (snesIndex !== -1 && pathParts.length > snesIndex + 2) {
-              const gameName = pathParts[snesIndex + 1];
-              const challengeName = pathParts[snesIndex + 2];
-              const remainingPath = pathParts.slice(snesIndex + 3).join('/');
-              if (remainingPath) {
-                targetDir = path.join(__dirname, 'challenges', 'snes', gameName, challengeName, remainingPath);
-              } else {
-                targetDir = path.join(__dirname, 'challenges', 'snes', gameName, challengeName);
-              }
-            } else {
-              targetDir = path.join(__dirname, 'challenges', 'snes');
-            }
-          } else if (item.name === 'challenges.json') {
-            // challenges.json goes to root of challenges folder
-            targetDir = path.join(__dirname, 'challenges');
-          } else {
-            // Default to challenges root
-            targetDir = path.join(__dirname, 'challenges');
-          }
-          
-          // Ensure target directory exists
-          if (!fs.existsSync(targetDir)) {
-            fs.mkdirSync(targetDir, { recursive: true });
-          }
-          
-          // Download file
-          const filePath = path.join(targetDir, fileName);
-          
-          // Handle different content types
-          if (item.content) {
-            // File content is base64 encoded in the API response
-            const content = Buffer.from(item.content, 'base64');
-            fs.writeFileSync(filePath, content);
-          } else if (item.download_url) {
-            // Download file content directly
-            const fileResponse = await axios.get(item.download_url, {
-              headers: {
-                'User-Agent': 'RetroChallenges-App/1.0'
-              },
-              responseType: 'arraybuffer'
-            });
-            
-            fs.writeFileSync(filePath, Buffer.from(fileResponse.data));
-          }
-          
-          console.log(`Downloaded: ${fileName} to ${targetDir}`);
-        }
+      if (fs.statSync(sourceFile).isDirectory()) {
+        // Copy directory recursively
+        fs.cpSync(sourceFile, targetFile, { recursive: true });
+      } else {
+        // Copy file
+        fs.copyFileSync(sourceFile, targetFile);
       }
     }
     
-    // Start recursive download from root
-    await downloadRecursive();
+    // Clean up temporary files
+    fs.rmSync(zipPath);
+    fs.rmSync(extractPath, { recursive: true, force: true });
     
-    return { success: true, message: 'Assets downloaded successfully with proper structure' };
+    console.log('Assets downloaded and extracted successfully');
+    return { success: true, message: 'Assets downloaded successfully from GitHub release' };
   } catch (error) {
     console.error('Error downloading assets:', error.message);
     return { success: false, error: error.message };
@@ -509,51 +478,107 @@ function clearAuthData() {
   authTokens = null;
 }
 
-// Launch EmuHawk with ROM and Lua script
-function launchEmuHawk(romPath, luaScriptPath) {
-  if (!APP_CONFIG.emuhawkPath) {
-    dialog.showErrorBox('Error', 'EmuHawk path not configured. Please select EmuHawk.exe first.');
-    return;
-  }
-
-  if (!romPath || !fs.existsSync(romPath)) {
-    dialog.showErrorBox('Error', 'ROM file not found. Please ensure the ROM file exists.');
-    return;
-  }
-
-  if (!luaScriptPath || !fs.existsSync(luaScriptPath)) {
-    dialog.showErrorBox('Error', 'Lua script not found. Please ensure the Lua script exists.');
-    return;
-  }
-
-  if (emuProcess) {
-    emuProcess.kill();
-  }
-
-  // EmuHawk command line arguments for minimal UI
-  const args = [
-    '--nogui',           // Disable GUI
-    '--loadrom', romPath, // Load ROM file
-    '--loadlua', luaScriptPath,  // Load Lua script
-    '--autostart',       // Auto start
-    '--nowindow'         // No window (if supported)
+// Try to find EmuHawk automatically in common locations
+function findEmuHawkPath() {
+  const commonPaths = [
+    'C:\\Program Files\\BizHawk\\EmuHawk.exe',
+    'C:\\Program Files (x86)\\BizHawk\\EmuHawk.exe',
+    'C:\\BizHawk\\EmuHawk.exe',
+    'C:\\EmuHawk\\EmuHawk.exe',
+    path.join(process.env.USERPROFILE, 'Desktop', 'BizHawk', 'EmuHawk.exe'),
+    path.join(process.env.USERPROFILE, 'Downloads', 'BizHawk', 'EmuHawk.exe'),
+    path.join(process.env.USERPROFILE, 'Documents', 'BizHawk', 'EmuHawk.exe')
   ];
 
-  emuProcess = spawn(APP_CONFIG.emuhawkPath, args, {
-    detached: true,
-    stdio: 'ignore'
-  });
+  for (const emuPath of commonPaths) {
+    if (fs.existsSync(emuPath)) {
+      console.log('Found EmuHawk at:', emuPath);
+      return emuPath;
+    }
+  }
 
-  emuProcess.on('error', (error) => {
-    console.error('EmuHawk error:', error);
-    dialog.showErrorBox('EmuHawk Error', `Failed to launch EmuHawk: ${error.message}`);
-  });
+  return null;
+}
 
-  emuProcess.on('close', (code) => {
-    emuProcess = null;
-  });
+// Launch EmuHawk with ROM and Lua script
+function launchEmuHawk(romPath, luaScriptPath) {
+  // Validate EmuHawk path
+  if (!APP_CONFIG.emuhawkPath) {
+    console.error('EmuHawk path not configured');
+    return false;
+  }
 
-  return emuProcess;
+  if (!fs.existsSync(APP_CONFIG.emuhawkPath)) {
+    console.error(`EmuHawk.exe not found at: ${APP_CONFIG.emuhawkPath}`);
+    return false;
+  }
+
+  // Validate ROM file
+  if (!romPath || !fs.existsSync(romPath)) {
+    console.error(`ROM file not found: ${romPath}`);
+    return false;
+  }
+
+  // Validate Lua script
+  if (!luaScriptPath || !fs.existsSync(luaScriptPath)) {
+    console.error(`Lua script not found: ${luaScriptPath}`);
+    return false;
+  }
+
+  // Kill existing process if running
+  if (emuProcess) {
+    try {
+      emuProcess.kill();
+      emuProcess = null;
+    } catch (error) {
+      console.warn('Error killing existing EmuHawk process:', error.message);
+    }
+  }
+
+  try {
+    // EmuHawk command line arguments
+    // Note: Different versions of EmuHawk/BizHawk may have different command line options
+    const args = [
+      romPath,                    // ROM file path
+      '--lua', luaScriptPath     // Load Lua script
+    ];
+
+    console.log('Launching EmuHawk with:', APP_CONFIG.emuhawkPath, args);
+
+    emuProcess = spawn(APP_CONFIG.emuhawkPath, args, {
+      detached: true,
+      stdio: ['ignore', 'pipe', 'pipe'] // Capture stderr for debugging
+    });
+
+    emuProcess.on('error', (error) => {
+      console.error('EmuHawk spawn error:', error);
+      emuProcess = null;
+    });
+
+    emuProcess.on('close', (code, signal) => {
+      console.log(`EmuHawk process closed with code ${code}, signal ${signal}`);
+      emuProcess = null;
+    });
+
+    // Capture stderr for debugging
+    emuProcess.stderr.on('data', (data) => {
+      console.log('EmuHawk stderr:', data.toString());
+    });
+
+    // Give the process a moment to start
+    setTimeout(() => {
+      if (emuProcess && emuProcess.exitCode === null) {
+        console.log('EmuHawk launched successfully');
+        return true;
+      }
+    }, 1000);
+
+    return true;
+
+  } catch (error) {
+    console.error('Error launching EmuHawk:', error);
+    return false;
+  }
 }
 
 // Monitor JSON file for changes
@@ -622,6 +647,7 @@ function registerIpcHandlers() {
 
     if (!result.canceled && result.filePaths.length > 0) {
       APP_CONFIG.emuhawkPath = result.filePaths[0];
+      saveAppConfig(); // Save the configuration
       return result.filePaths[0];
     }
     return null;
@@ -641,27 +667,119 @@ function registerIpcHandlers() {
 
   ipcMain.handle('launch-challenge', async (event, gameData, challengeData) => {
     try {
+      console.log('=== LAUNCH CHALLENGE DEBUG ===');
+      console.log('Game Data:', JSON.stringify(gameData, null, 2));
+      console.log('Challenge Data:', JSON.stringify(challengeData, null, 2));
+      console.log('APP_CONFIG.romsPath:', APP_CONFIG.romsPath);
+      console.log('APP_CONFIG.challengesPath:', APP_CONFIG.challengesPath);
+      console.log('APP_CONFIG.emuhawkPath:', APP_CONFIG.emuhawkPath);
+
+      // Determine ROM filename based on game name
+      let romFileName;
+      switch (gameData.name.toLowerCase()) {
+        case 'castlevania':
+          romFileName = 'castlevania.nes';
+          break;
+        case 'super mario bros':
+          romFileName = 'super_mario_bros.nes';
+          break;
+        default:
+          romFileName = `${gameData.name.toLowerCase().replace(/\s+/g, '_')}.nes`;
+      }
+
+      console.log('Determined ROM filename:', romFileName);
+
       // Get ROM path
-      const romPath = path.join(APP_CONFIG.romsPath, gameData.rom);
+      const romPath = path.join(APP_CONFIG.romsPath, romFileName);
+      console.log('Looking for ROM at:', romPath);
+      console.log('ROM exists:', fs.existsSync(romPath));
+      
       if (!fs.existsSync(romPath)) {
-        throw new Error(`ROM file not found: ${gameData.rom}. Please add it to the roms folder.`);
+        const errorMsg = `Failed to launch challenge: Could not find the ${gameData.name} ROM file. Make sure the ROM file is placed in the roms folder and has the right name (${romFileName}).\n\nExpected location: ${romPath}`;
+        console.log('ROM ERROR:', errorMsg);
+        return { success: false, error: errorMsg };
       }
 
-      // Get Lua script path (assuming it's in challenges/nes/[game]/[challenge]/main.lua)
-      const luaPath = path.join(__dirname, 'challenges', 'nes', gameData.name.toLowerCase().replace(/\s+/g, '_'), challengeData.name.toLowerCase().replace(/\s+/g, '_'), 'main.lua');
+      // Get Lua script path - use the path from challenges.json if available
+      let luaPath;
+      if (challengeData.lua) {
+        // Use the exact path from challenges.json
+        luaPath = path.join(APP_CONFIG.challengesPath, challengeData.lua);
+        console.log('Using Lua path from challenges.json:', luaPath);
+      } else {
+        // Fallback to old path structure
+        const gameFolder = gameData.name.toLowerCase().replace(/\s+/g, '_');
+        const challengeFolder = challengeData.name.toLowerCase().replace(/\s+/g, '_');
+        luaPath = path.join(APP_CONFIG.challengesPath, 'nes', gameFolder, challengeFolder, 'main.lua');
+        console.log('Using fallback Lua path:', luaPath);
+      }
+
+      console.log('Looking for Lua script at:', luaPath);
+      console.log('Lua script exists:', fs.existsSync(luaPath));
+      
       if (!fs.existsSync(luaPath)) {
-        throw new Error(`Lua script not found: ${challengeData.lua}. Please refresh challenges to download it.`);
+        const errorMsg = `Failed to launch challenge: Could not find the challenge script for ${challengeData.name}.\n\nExpected location: ${luaPath}\n\nPlease click the Refresh button to download the latest challenges.`;
+        console.log('LUA ERROR:', errorMsg);
+        return { success: false, error: errorMsg };
       }
 
+      console.log('Both ROM and Lua script found, launching EmuHawk...');
       const process = launchEmuHawk(romPath, luaPath);
-      return process ? 'success' : 'failed';
+      
+      if (process) {
+        console.log('EmuHawk launched successfully');
+        return 'success';
+      } else {
+        // Provide specific error message based on what might have failed
+        if (!APP_CONFIG.emuhawkPath) {
+          const errorMsg = 'Failed to launch challenge: EmuHawk path not configured. Please click the 🔍 button to auto-detect EmuHawk or use Browse to select EmuHawk.exe manually.';
+          console.log('EMUHAWK ERROR (not configured):', errorMsg);
+          return { success: false, error: errorMsg };
+        } else if (!fs.existsSync(APP_CONFIG.emuhawkPath)) {
+          const errorMsg = `Failed to launch challenge: EmuHawk.exe not found at: ${APP_CONFIG.emuhawkPath}\n\nPlease check the path and try again, or use the 🔍 button to auto-detect EmuHawk.`;
+          console.log('EMUHAWK ERROR (not found):', errorMsg);
+          return { success: false, error: errorMsg };
+        } else {
+          const errorMsg = 'Failed to launch challenge: Could not start EmuHawk. Please check that EmuHawk.exe is properly installed and try again.';
+          console.log('EMUHAWK ERROR (launch failed):', errorMsg);
+          return { success: false, error: errorMsg };
+        }
+      }
     } catch (error) {
-      throw error;
+      console.log('GENERAL ERROR:', error.message);
+      console.log('Error stack:', error.stack);
+      return { success: false, error: error.message };
     }
   });
 
   ipcMain.handle('get-user-info', () => {
     return userInfo;
+  });
+
+  // Get current EmuHawk path
+  ipcMain.handle('get-emuhawk-path', () => {
+    return APP_CONFIG.emuhawkPath;
+  });
+
+  // Get user data paths
+  ipcMain.handle('get-user-data-paths', () => {
+    return {
+      userDataPath: APP_CONFIG.userDataPath,
+      romsPath: APP_CONFIG.romsPath,
+      challengesPath: APP_CONFIG.challengesPath,
+      configPath: APP_CONFIG.configPath
+    };
+  });
+
+  // Auto-detect EmuHawk path
+  ipcMain.handle('auto-detect-emuhawk', () => {
+    const detectedPath = findEmuHawkPath();
+    if (detectedPath) {
+      APP_CONFIG.emuhawkPath = detectedPath;
+      saveAppConfig(); // Save the configuration
+      return { success: true, path: detectedPath };
+    }
+    return { success: false, message: 'EmuHawk not found in common locations' };
   });
 
   ipcMain.handle('logout', () => {
@@ -681,10 +799,11 @@ function registerIpcHandlers() {
       ensureRomsDirectory();
       
       // Open the ROMs folder in the system file explorer
-      shell.openPath(APP_CONFIG.romsPath);
+      await shell.openPath(APP_CONFIG.romsPath);
+      return { success: true, path: APP_CONFIG.romsPath };
     } catch (error) {
       console.error('Error opening ROM folder:', error);
-      throw error;
+      return { success: false, error: error.message };
     }
   });
 
@@ -692,6 +811,7 @@ function registerIpcHandlers() {
 
 // App event handlers
 app.whenReady().then(async () => {
+  loadAppConfig(); // Load saved configuration
   registerIpcHandlers();
   ensureRomsDirectory();
   
