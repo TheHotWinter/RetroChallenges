@@ -491,7 +491,7 @@
                             <h3 class="text-lg font-medium text-white flex items-center">
                                 <span id="emuhawkStatus" class="status-indicator status-warning"></span>
                                 <i data-feather="settings" class="mr-2 text-blue-700"></i>
-                                EmuHawk Configuration
+                    EmuHawk Configuration
                             </h3>
                             <div class="mt-4">
                                 <label class="block text-sm font-medium text-gray-300 mb-1">EmuHawk Path</label>
@@ -503,10 +503,20 @@
                                     <button id="selectEmuhawk" class="inline-flex items-center px-3 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
                                         Browse
                                     </button>
-            </div>
-            </div>
-                        </div>
-        </div>
+                </div>
+                </div>
+                            
+                            <div class="mt-6">
+                                <button id="downloadBizhawk" class="w-full inline-flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500">
+                                    <i data-feather="settings" class="h-4 w-4 mr-2"></i>
+                                    Auto Config BizHawk
+                                </button>
+                                <p class="mt-2 text-xs text-gray-400 text-center">
+                                    Download and automatically configure BizHawk emulator
+                                </p>
+                            </div>
+                </div>
+                </div>
 
                     <!-- Main Content -->
                     <div class="lg:col-span-2">
@@ -554,7 +564,7 @@
                                     <i data-feather="message-square" class="flex-shrink-0 h-5 w-5 text-gray-400 group-hover:text-gray-500"></i>
                                     <span class="ml-3">Join us on Discord</span>
                                 </a>
-                            </div>
+            </div>
                             
                             <div class="mt-8">
                                 <h3 class="text-lg font-medium text-white flex items-center">
@@ -573,9 +583,9 @@
                                         <i data-feather="play-circle" class="flex-shrink-0 h-5 w-5 text-purple-400 group-hover:text-purple-300"></i>
                                         <span class="ml-3">twitch.tv/jodosh</span>
                                     </a>
-                                </div>
-                            </div>
-                            
+            </div>
+        </div>
+
                             <div class="mt-8">
                                 <h3 class="text-lg font-medium text-white flex items-center">
                                     <i data-feather="shield" class="mr-2 text-green-700"></i>
@@ -591,8 +601,8 @@
                                     </a>
                                 </div>
                             </div>
+            </div>
         </div>
-    </div>
 
                     <!-- Main Content -->
                     <div class="lg:col-span-2">
@@ -606,12 +616,12 @@
                                 <div class="flex">
                                     <div class="flex-shrink-0">
                                         <i data-feather="thumbs-up" class="h-5 w-5 text-blue-400"></i>
-    </div>
+        </div>
                                     <div class="ml-3">
                                         <p class="text-sm text-blue-700">
                                             Special thanks to <strong>BizHawk</strong> for their amazing emulator that helps us achieve this project.
                                         </p>
-                                    </div>
+    </div>
                                 </div>
                             </div>
                             <div class="mt-6">
@@ -647,7 +657,7 @@
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3">
             <div class="flex items-center justify-center text-xs text-gray-400">
                 <span>© 2025 Retro Challenges</span>
-            </div>
+    </div>
         </div>
     </footer>
 
@@ -656,6 +666,111 @@
         feather.replace();
         
         const { ipcRenderer } = require('electron');
+
+        // Listen for BizHawk download popup
+        ipcRenderer.on('show-bizhawk-popup', () => {
+            showBizHawkPopup();
+        });
+
+        // Listen for BizHawk warning popup
+        ipcRenderer.on('show-bizhawk-warning', () => {
+            showBizHawkWarning();
+        });
+
+        // Show BizHawk download popup
+        function showBizHawkPopup() {
+            const popup = document.createElement('div');
+            popup.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50';
+            popup.innerHTML = `
+                <div class="bg-slate-800 rounded-lg shadow-xl p-6 max-w-md mx-4 border border-slate-700">
+                    <div class="flex items-center mb-4">
+                        <i data-feather="settings" class="h-6 w-6 text-green-500 mr-3"></i>
+                        <h3 class="text-lg font-medium text-white">Auto Configuring BizHawk</h3>
+                    </div>
+                    <div class="space-y-3 text-sm text-gray-300">
+                        <p><strong>What we're doing for you:</strong></p>
+                        <ul class="list-disc list-inside space-y-1 ml-2">
+                            <li>Downloading the latest BizHawk emulator</li>
+                            <li>Installing it in your user folder</li>
+                            <li>Automatically configuring the emulator path</li>
+                            <li>Setting up everything for Retro Challenges</li>
+                        </ul>
+                        <p class="mt-3">BizHawk is the powerful emulator that makes Retro Challenges possible!</p>
+                        <p class="text-xs text-gray-400">Learn more: <a href="https://tasvideos.org/Bizhawk" target="_blank" rel="noopener noreferrer" class="text-blue-400 hover:text-blue-300 underline">tasvideos.org/Bizhawk</a></p>
+                    </div>
+                    <div class="mt-6 flex justify-center">
+                        <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-green-500"></div>
+                    </div>
+                </div>
+            `;
+            
+            document.body.appendChild(popup);
+            feather.replace();
+            
+            // Auto-remove after 15 seconds
+            setTimeout(() => {
+                if (popup.parentNode) {
+                    popup.remove();
+                }
+            }, 15000);
+        }
+
+        // Show BizHawk warning popup
+        function showBizHawkWarning() {
+            const popup = document.createElement('div');
+            popup.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50';
+            popup.innerHTML = `
+                <div class="bg-slate-800 rounded-lg shadow-xl p-6 max-w-md mx-4 border border-slate-700">
+                    <div class="flex items-center mb-4">
+                        <i data-feather="alert-triangle" class="h-6 w-6 text-yellow-500 mr-3"></i>
+                        <h3 class="text-lg font-medium text-white">BizHawk Already Installed</h3>
+                    </div>
+                    <div class="space-y-3 text-sm text-gray-300">
+                        <p>You already have BizHawk installed and configured!</p>
+                        <p class="text-yellow-300"><strong>Only reinstall if you're experiencing issues with:</strong></p>
+                        <ul class="list-disc list-inside space-y-1 ml-2 text-yellow-200">
+                            <li>Emulator not launching</li>
+                            <li>Challenge scripts not working</li>
+                            <li>Performance problems</li>
+                            <li>Outdated version issues</li>
+                        </ul>
+                        <p class="mt-3 text-xs text-gray-400">Reinstalling will overwrite your current BizHawk installation.</p>
+                    </div>
+                    <div class="mt-6 flex space-x-3">
+                        <button id="cancelBizhawk" class="flex-1 px-4 py-2 border border-gray-600 text-sm font-medium rounded-md text-gray-300 bg-slate-700 hover:bg-slate-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500">
+                            Cancel
+                        </button>
+                        <button id="forceBizhawk" class="flex-1 px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500">
+                            Reinstall Anyway
+                        </button>
+                    </div>
+                </div>
+            `;
+            
+            document.body.appendChild(popup);
+            feather.replace();
+            
+            // Add event listeners
+            document.getElementById('cancelBizhawk').addEventListener('click', () => {
+                popup.remove();
+            });
+            
+            document.getElementById('forceBizhawk').addEventListener('click', async () => {
+                popup.remove();
+                try {
+                    const result = await ipcRenderer.invoke('force-download-bizhawk');
+                    if (result.success) {
+                        showNotification('BizHawk reinstalled successfully!', 'success');
+                        loadEmuhawkPath(); // Refresh the path display
+                    } else {
+                        showNotification(result.error || 'Failed to reinstall BizHawk', 'error');
+                    }
+                } catch (error) {
+                    console.error('Error reinstalling BizHawk:', error);
+                    showNotification('Failed to reinstall BizHawk: ' + error.message, 'error');
+                }
+            });
+        }
 
         // Navigation functionality
         function initNavigation() {
@@ -886,6 +1001,25 @@
             loadConfig();
             loadChallenges();
             
+            // Download BizHawk button handler
+            document.getElementById('downloadBizhawk').addEventListener('click', async () => {
+                try {
+                    const result = await ipcRenderer.invoke('download-bizhawk');
+                    if (result.success) {
+                        showNotification('BizHawk downloaded and installed successfully!', 'success');
+                        loadEmuhawkPath(); // Refresh the path display
+                    } else if (result.needsConfirmation) {
+                        // The warning popup will be shown automatically by the main process
+                        // No need to show additional notification here
+                    } else {
+                        showNotification(result.error || 'Failed to download BizHawk', 'error');
+                    }
+                } catch (error) {
+                    console.error('Error downloading BizHawk:', error);
+                    showNotification('Failed to download BizHawk: ' + error.message, 'error');
+                }
+            });
+            
             // Check user authentication status periodically
             setInterval(loadUserInfo, 2000);
         });
@@ -976,6 +1110,16 @@
                 updateStatusIndicators();
             } catch (error) {
                 console.error('Error loading config:', error);
+            }
+        }
+
+        async function loadEmuhawkPath() {
+            try {
+                const emuhawkPath = await ipcRenderer.invoke('get-emuhawk-path');
+                document.getElementById('emuhawkPath').value = emuhawkPath || '';
+                updateStatusIndicators();
+            } catch (error) {
+                console.error('Error loading EmuHawk path:', error);
             }
         }
 
