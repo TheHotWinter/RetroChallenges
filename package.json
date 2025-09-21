@@ -24,7 +24,8 @@
   },
   "dependencies": {
     "adm-zip": "^0.5.16",
-    "axios": "^1.6.0"
+    "axios": "^1.6.0",
+    "tmi.js": "^1.8.5"
   },
   "build": {
     "appId": "com.retrochallenges.app",

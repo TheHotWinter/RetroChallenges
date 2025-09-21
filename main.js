@@ -3,6 +3,7 @@ const path = require('path');
 const fs = require('fs');
 const { spawn } = require('child_process');
 const axios = require('axios');
+const tmi = require('tmi.js');
 
 
 // Load configuration
@@ -55,6 +56,11 @@ let isAuthenticated = false;
 let userInfo = null;
 let challengesData = null;
 let authTokens = null;
+
+// Twitch IRC variables
+let twitchClient = null;
+let twitchChannel = null;
+let twitchConnected = false;
 
 
 // Download and install BizHawk
@@ -348,6 +354,160 @@ async function sendWebhookNotification(message, title = 'RetroChallenges App', i
   }
 }
 
+// Twitch IRC Functions
+async function connectToTwitch(channelName) {
+  try {
+    console.log(`Connecting to Twitch channel: ${channelName}`);
+    
+    // Disconnect existing connection if any
+    if (twitchClient) {
+      await disconnectFromTwitch();
+    }
+    
+    // Create Twitch client
+    twitchClient = new tmi.Client({
+      options: { debug: false },
+      connection: {
+        reconnect: true,
+        secure: true
+      },
+      channels: [channelName]
+    });
+    
+    // Set up event handlers
+    twitchClient.on('message', (channel, tags, message, self) => {
+      // Don't process our own messages
+      if (self) return;
+      
+      // Parse message and send to renderer
+      const parsedMessage = {
+        username: tags.username,
+        content: message,
+        tags: {
+          subscriber: tags.subscriber,
+          moderator: tags.mod,
+          bits: tags.bits,
+          badges: tags.badges
+        },
+        timestamp: new Date().toISOString()
+      };
+      
+      // Send to renderer process
+      if (mainWindow) {
+        mainWindow.webContents.send('twitch-message', parsedMessage);
+      }
+      
+      console.log(`Twitch message from ${tags.username}: ${message}`);
+    });
+    
+    twitchClient.on('connected', (addr, port) => {
+      console.log(`Connected to Twitch IRC: ${addr}:${port}`);
+      twitchConnected = true;
+      twitchChannel = channelName;
+      
+      // Send status to renderer
+      if (mainWindow) {
+        mainWindow.webContents.send('twitch-status', 'connected');
+      }
+      
+      // Send webhook notification
+      sendWebhookNotification(
+        `🔗 Connected to Twitch channel: #${channelName}`, 
+        'Twitch Connected', 
+        true
+      );
+    });
+    
+    twitchClient.on('disconnected', (reason) => {
+      console.log(`Disconnected from Twitch IRC: ${reason}`);
+      twitchConnected = false;
+      twitchChannel = null;
+      
+      // Send status to renderer
+      if (mainWindow) {
+        mainWindow.webContents.send('twitch-status', 'disconnected');
+      }
+    });
+    
+    twitchClient.on('reconnect', () => {
+      console.log('Reconnecting to Twitch IRC...');
+      if (mainWindow) {
+        mainWindow.webContents.send('twitch-status', 'reconnecting');
+      }
+    });
+    
+    // Connect to Twitch
+    await twitchClient.connect();
+    
+    return { success: true, message: `Connected to #${channelName}` };
+    
+  } catch (error) {
+    console.error('Twitch connection error:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+async function disconnectFromTwitch() {
+  try {
+    if (twitchClient && twitchConnected) {
+      await twitchClient.disconnect();
+      twitchClient = null;
+      twitchConnected = false;
+      twitchChannel = null;
+      
+      console.log('Disconnected from Twitch IRC');
+      
+      // Send status to renderer
+      if (mainWindow) {
+        mainWindow.webContents.send('twitch-status', 'disconnected');
+      }
+      
+      return { success: true, message: 'Disconnected from Twitch' };
+    }
+    
+    return { success: true, message: 'Not connected to Twitch' };
+  } catch (error) {
+    console.error('Twitch disconnect error:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+// Send command to BizHawk via Lua bridge
+async function sendBizHawkCommand(commandData) {
+  try {
+    const { command, params, timestamp } = commandData;
+    
+    console.log(`Sending BizHawk command: ${command}`, params);
+    
+    // Create command file for Lua script to read
+    const commandFile = path.join(APP_CONFIG.challengesPath, 'commands.json');
+    const commandQueue = {
+      commands: [{
+        id: `cmd_${Date.now()}`,
+        action: command,
+        params: params || {},
+        timestamp: timestamp || new Date().toISOString()
+      }]
+    };
+    
+    // Write command to file
+    fs.writeFileSync(commandFile, JSON.stringify(commandQueue, null, 2));
+    
+    // Send webhook notification for command
+    await sendWebhookNotification(
+      `🎮 BizHawk command sent: ${command}`, 
+      'BizHawk Command', 
+      true
+    );
+    
+    return { success: true, message: `Command ${command} sent to BizHawk` };
+    
+  } catch (error) {
+    console.error('BizHawk command error:', error);
+    return { success: false, error: error.message };
+  }
+}
+
 // Load app configuration
 function loadAppConfig() {
   try {
@@ -441,10 +601,10 @@ async function authenticateWithGoogle() {
       modal: true,
       resizable: false
     });
-
+    
     // Load the server login URL. The server will redirect to Google and back.
     await authWindow.loadURL(SERVER_LOGIN_URL);
-
+    
     // Wait for the success page that contains a window.USER JSON blob.
     return new Promise((resolve) => {
       // When a page finishes loading, try to read the embedded user object.
@@ -457,7 +617,7 @@ async function authenticateWithGoogle() {
             const user = await authWindow.webContents.executeJavaScript('window.USER');
 
             // Close the auth window
-            authWindow.close();
+                authWindow.close();
 
             // Persist minimal auth data locally (no tokens are stored client-side)
             isAuthenticated = true;
@@ -602,8 +762,8 @@ async function downloadAssetsFromRepo() {
 function ensureRomsDirectory() {
 
   try {
-    if (!fs.existsSync(APP_CONFIG.romsPath)) {
-      fs.mkdirSync(APP_CONFIG.romsPath, { recursive: true });
+  if (!fs.existsSync(APP_CONFIG.romsPath)) {
+    fs.mkdirSync(APP_CONFIG.romsPath, { recursive: true });
     }
   } catch (error) {
     console.error('Error creating ROMs directory:', error);
@@ -773,7 +933,7 @@ function launchEmuHawk(romPath, luaScriptPath) {
   // Kill existing process if running
   if (emuProcess) {
     try {
-      emuProcess.kill();
+    emuProcess.kill();
       emuProcess = null;
     } catch (error) {
       console.warn('Error killing existing EmuHawk process:', error.message);
@@ -783,27 +943,27 @@ function launchEmuHawk(romPath, luaScriptPath) {
   try {
     // EmuHawk command line arguments
     // Note: Different versions of EmuHawk/BizHawk may have different command line options
-    const args = [
+  const args = [
       romPath,                    // ROM file path
       '--lua', luaScriptPath     // Load Lua script
     ];
 
     console.log('Launching EmuHawk with:', APP_CONFIG.emuhawkPath, args);
 
-    emuProcess = spawn(APP_CONFIG.emuhawkPath, args, {
-      detached: true,
+  emuProcess = spawn(APP_CONFIG.emuhawkPath, args, {
+    detached: true,
       stdio: ['ignore', 'pipe', 'pipe'] // Capture stderr for debugging
-    });
+  });
 
-    emuProcess.on('error', (error) => {
+  emuProcess.on('error', (error) => {
       console.error('EmuHawk spawn error:', error);
       emuProcess = null;
-    });
+  });
 
     emuProcess.on('close', (code, signal) => {
       console.log(`EmuHawk process closed with code ${code}, signal ${signal}`);
-      emuProcess = null;
-    });
+    emuProcess = null;
+  });
 
     // Capture stderr for debugging
     emuProcess.stderr.on('data', (data) => {
@@ -1074,6 +1234,34 @@ function registerIpcHandlers() {
       return { success: true, path: APP_CONFIG.romsPath };
     } catch (error) {
       console.error('Error opening ROM folder:', error);
+      return { success: false, error: error.message };
+    }
+  });
+
+  // Twitch Integration IPC Handlers
+  ipcMain.handle('twitch-connect', async (event, channelName) => {
+    try {
+      return await connectToTwitch(channelName);
+    } catch (error) {
+      console.error('IPC twitch-connect error:', error);
+      return { success: false, error: error.message };
+    }
+  });
+
+  ipcMain.handle('twitch-disconnect', async () => {
+    try {
+      return await disconnectFromTwitch();
+    } catch (error) {
+      console.error('IPC twitch-disconnect error:', error);
+      return { success: false, error: error.message };
+    }
+  });
+
+  ipcMain.handle('bizhawk-command', async (event, commandData) => {
+    try {
+      return await sendBizHawkCommand(commandData);
+    } catch (error) {
+      console.error('IPC bizhawk-command error:', error);
       return { success: false, error: error.message };
     }
   });

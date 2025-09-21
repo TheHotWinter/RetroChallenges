@@ -426,6 +426,9 @@
                 <button class="nav-tab relative py-4 px-6 text-sm font-medium" data-page="information">
                     Information
                 </button>
+                <button class="nav-tab relative py-4 px-6 text-sm font-medium" data-page="twitch">
+                    Twitch Integration
+                </button>
                 <div class="nav-highlight" style="width: 100px; left: 0;"></div>
         </div>
     </div>
@@ -650,6 +653,119 @@
                 </div>
             </div>
         </div>
+
+        <!-- Twitch Integration Page -->
+        <div class="page hidden" id="twitch-page">
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                <!-- Sidebar -->
+                <div class="lg:col-span-1 space-y-6">
+                    <!-- Connection Status -->
+                    <div class="bg-slate-800 rounded-lg shadow-lg p-6 border border-slate-700">
+                        <h3 class="text-lg font-medium text-white flex items-center">
+                            <i data-feather="wifi" class="mr-2 text-green-700"></i>
+                            Connection Status
+                        </h3>
+                        <div class="mt-4">
+                            <div class="flex items-center justify-between">
+                                <span class="text-sm text-gray-300">Twitch IRC</span>
+                                <span id="twitch-status" class="px-2 py-1 text-xs font-medium rounded-full bg-red-100 text-red-800">
+                                    Disconnected
+                                </span>
+                            </div>
+                            <div class="mt-4">
+                                <label class="block text-sm font-medium text-gray-300 mb-2">
+                                    Channel Name
+                                </label>
+                                <div class="flex">
+                                    <input type="text" id="twitch-channel-input" placeholder="Enter channel name (without #)" 
+                                           class="flex-1 border border-slate-600 bg-slate-700 text-white rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                                    <button id="connect-twitch" class="px-4 py-2 bg-purple-600 text-white text-sm font-medium rounded-md ml-2 hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-purple-500">
+                                        Connect
+                                    </button>
+                                </div>
+                                <p class="mt-2 text-xs text-gray-400">
+                                    Enter the Twitch channel name to connect to (e.g., "mattd1980")
+                                </p>
+                            </div>
+                            
+                            <!-- Recent Channels -->
+                            <div id="recent-channels-section" class="mt-4 hidden">
+                                <label class="block text-sm font-medium text-gray-300 mb-2">
+                                    Recent Channels
+                                </label>
+                                <div id="recent-channels" class="space-y-2">
+                                    <!-- Recent channels will be populated here -->
+                                </div>
+                            </div>
+                            
+                            <!-- Disconnect Button -->
+                            <div class="mt-4">
+                                <button id="disconnect-twitch" class="w-full px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 hidden">
+                                    <i data-feather="x" class="h-4 w-4 mr-2 inline"></i>
+                                    Disconnect
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Quick Commands -->
+                    <div class="bg-slate-800 rounded-lg shadow-lg p-6 border border-slate-700">
+                        <h3 class="text-lg font-medium text-white flex items-center">
+                            <i data-feather="zap" class="mr-2 text-yellow-700"></i>
+                            Quick Commands
+                        </h3>
+                        <div class="mt-4 space-y-2">
+                            <div class="text-sm text-gray-300">
+                                <code class="bg-slate-700 px-2 py-1 rounded">!pause</code> - Pause game
+                            </div>
+                            <div class="text-sm text-gray-300">
+                                <code class="bg-slate-700 px-2 py-1 rounded">!resume</code> - Resume game
+                            </div>
+                            <div class="text-sm text-gray-300">
+                                <code class="bg-slate-700 px-2 py-1 rounded">!speed 2</code> - Set speed
+                            </div>
+                            <div class="text-sm text-gray-300">
+                                <code class="bg-slate-700 px-2 py-1 rounded">!screenshot</code> - Take screenshot
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Main Content -->
+                <div class="lg:col-span-2 space-y-6">
+
+                    <!-- Live Chat Feed -->
+                    <div class="bg-slate-800 rounded-lg shadow-lg p-6 border border-slate-700">
+                        <h3 class="text-lg font-medium text-white flex items-center">
+                            <i data-feather="message-square" class="mr-2 text-green-700"></i>
+                            Live Chat Feed
+                        </h3>
+                        <div class="mt-4">
+                            <div id="chat-feed" class="h-64 overflow-y-auto bg-slate-900 rounded-md p-4 space-y-2">
+                                <div class="text-sm text-gray-500 text-center">
+                                    Connect to a Twitch channel to see live chat messages
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Event Log -->
+                    <div class="bg-slate-800 rounded-lg shadow-lg p-6 border border-slate-700">
+                        <h3 class="text-lg font-medium text-white flex items-center">
+                            <i data-feather="activity" class="mr-2 text-orange-700"></i>
+                            Event Log
+                        </h3>
+                        <div class="mt-4">
+                            <div id="event-log" class="h-48 overflow-y-auto bg-slate-900 rounded-md p-4 space-y-2">
+                                <div class="text-sm text-gray-500 text-center">
+                                    Events will appear here when chat interactions occur
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
     </main>
 
     <!-- Fixed Footer -->
@@ -661,11 +777,10 @@
         </div>
     </footer>
 
+    <script src="twitch.js"></script>
     <script>
         AOS.init();
         feather.replace();
-        
-        const { ipcRenderer } = require('electron');
 
         // Listen for BizHawk download popup
         ipcRenderer.on('show-bizhawk-popup', () => {
