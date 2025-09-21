@@ -28,10 +28,24 @@
         body {
             font-family: 'Inter', sans-serif;
             background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+            background-size: 400% 400%;
+            animation: gradientShift 15s ease infinite;
             min-height: 100vh;
             color: #e2e8f0;
             position: relative;
             overflow-x: hidden;
+        }
+
+        @keyframes gradientShift {
+            0% {
+                background-position: 0% 50%;
+            }
+            50% {
+                background-position: 100% 50%;
+            }
+            100% {
+                background-position: 0% 50%;
+            }
         }
         
         body::before {
@@ -532,14 +546,50 @@
                                     <i data-feather="globe" class="flex-shrink-0 h-5 w-5 text-gray-400 group-hover:text-gray-500"></i>
                                     <span class="ml-3">Our Website</span>
                                 </a>
-                                <a href="https://github.com/mattd1980/retrochallenges-assets/blob/main/HowToAddChallenges.md" target="_blank" rel="noopener noreferrer" class="group flex items-center px-3 py-2 text-sm font-medium rounded-md text-gray-300 hover:text-white hover:bg-slate-700">
+                                <a href="https://retrochallenges.com/lua.html" target="_blank" rel="noopener noreferrer" class="group flex items-center px-3 py-2 text-sm font-medium rounded-md text-gray-300 hover:text-white hover:bg-slate-700">
                                     <i data-feather="book" class="flex-shrink-0 h-5 w-5 text-gray-400 group-hover:text-gray-500"></i>
                                     <span class="ml-3">Getting Started Guide</span>
                                 </a>
-                                <a href="https://discord.gg/retrochallenges" target="_blank" rel="noopener noreferrer" class="group flex items-center px-3 py-2 text-sm font-medium rounded-md text-gray-300 hover:text-white hover:bg-slate-700">
+                                <a href="https://discord.gg/JsyGz4nM3e" target="_blank" rel="noopener noreferrer" class="group flex items-center px-3 py-2 text-sm font-medium rounded-md text-gray-300 hover:text-white hover:bg-slate-700">
                                     <i data-feather="message-square" class="flex-shrink-0 h-5 w-5 text-gray-400 group-hover:text-gray-500"></i>
                                     <span class="ml-3">Join us on Discord</span>
                                 </a>
+                            </div>
+                            
+                            <div class="mt-8">
+                                <h3 class="text-lg font-medium text-white flex items-center">
+                                    <i data-feather="tv" class="mr-2 text-purple-700"></i>
+                                    Twitch Channels
+                                </h3>
+                                <p class="mt-2 text-sm text-gray-400">
+                                    The creators might be online working on a challenge, check them out on Twitch!
+                                </p>
+                                <div class="mt-4 space-y-3">
+                                    <a href="https://twitch.tv/mattd1980" target="_blank" rel="noopener noreferrer" class="group flex items-center px-3 py-2 text-sm font-medium rounded-md text-gray-300 hover:text-white hover:bg-slate-700">
+                                        <i data-feather="play-circle" class="flex-shrink-0 h-5 w-5 text-purple-400 group-hover:text-purple-300"></i>
+                                        <span class="ml-3">twitch.tv/mattd1980</span>
+                                    </a>
+                                    <a href="https://twitch.tv/jodosh" target="_blank" rel="noopener noreferrer" class="group flex items-center px-3 py-2 text-sm font-medium rounded-md text-gray-300 hover:text-white hover:bg-slate-700">
+                                        <i data-feather="play-circle" class="flex-shrink-0 h-5 w-5 text-purple-400 group-hover:text-purple-300"></i>
+                                        <span class="ml-3">twitch.tv/jodosh</span>
+                                    </a>
+                                </div>
+                            </div>
+                            
+                            <div class="mt-8">
+                                <h3 class="text-lg font-medium text-white flex items-center">
+                                    <i data-feather="shield" class="mr-2 text-green-700"></i>
+                                    Privacy & Legal
+                                </h3>
+                                <p class="mt-2 text-sm text-gray-400">
+                                    Learn how we protect your data and respect your privacy.
+                                </p>
+                                <div class="mt-4 space-y-3">
+                                    <a href="https://retrochallenges.com/privacy-policy.html" target="_blank" rel="noopener noreferrer" class="group flex items-center px-3 py-2 text-sm font-medium rounded-md text-gray-300 hover:text-white hover:bg-slate-700">
+                                        <i data-feather="file-text" class="flex-shrink-0 h-5 w-5 text-green-400 group-hover:text-green-300"></i>
+                                        <span class="ml-3">Privacy Policy</span>
+                                    </a>
+                                </div>
                             </div>
         </div>
     </div>
