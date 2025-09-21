@@ -3,7 +3,7 @@
     {
       "name": "Castlevania",
       "description": "Classic vampire hunting action platformer",
-      "rom" : "castlevania.nes",
+      "rom" : "roms\\castlevania.nes",
       "challenges": [
         {
           "name": "Get 5000 points!",
@@ -11,6 +11,13 @@
           "lua": "nes\\castlevania\\5000pts\\5000pts.lua",
           "difficulty": "Easy",
           "estimatedTime": "5-10 minutes"
+        },
+        {
+          "name": "Cross the Big Bridge!",
+          "description": "Cross the big bridge as fast as possible and defeat the mummy boss!",
+          "lua": "nes\\castlevania\\bigbridge\\bigbridge.lua",
+          "difficulty": "Easy",
+          "estimatedTime": "3-4 minutes"
         }
       ]
     }    

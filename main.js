@@ -490,9 +490,19 @@ async function authenticateWithGoogle() {
 
 // Exchange authorization code for access token
 
-// Fetch challenges from remote URL
+// Fetch challenges from remote URL or local file
 async function fetchChallenges() {
   try {
+    // Try to load from local file first (for development)
+    const localChallengesPath = path.join(__dirname, 'challenges.json');
+    if (fs.existsSync(localChallengesPath)) {
+      console.log('Loading challenges from local file:', localChallengesPath);
+      challengesData = JSON.parse(fs.readFileSync(localChallengesPath, 'utf8'));
+      return challengesData;
+    }
+    
+    // Fallback to remote URL
+    console.log('Loading challenges from remote URL:', APP_CONFIG.challengesUrl);
     const response = await axios.get(APP_CONFIG.challengesUrl, {
       timeout: 10000,
       headers: {
