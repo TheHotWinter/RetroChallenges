@@ -42,7 +42,8 @@ const APP_CONFIG = {
   romsPath: path.join(app.getPath('userData'), 'roms'), // Directory for ROM files
   challengesPath: path.join(app.getPath('userData'), 'challenges'), // Directory for downloaded challenges
   authDataPath: path.join(app.getPath('userData'), 'auth_data.json'), // File to store authentication data
-  configPath: path.join(app.getPath('userData'), 'app_config.json') // File to store app configuration
+  configPath: path.join(app.getPath('userData'), 'app_config.json'), // File to store app configuration
+  bizhawkPath: path.join(app.getPath('userData'), 'bizhawk') // Directory for BizHawk installation
 };
 
 // Discord webhook configuration
@@ -54,6 +55,207 @@ let isAuthenticated = false;
 let userInfo = null;
 let challengesData = null;
 let authTokens = null;
+
+
+// Download and install BizHawk
+async function downloadBizHawk() {
+  try {
+    console.log('Starting BizHawk download...');
+    
+    // Check if BizHawk is already installed
+    const existingBizHawkPath = path.join(APP_CONFIG.bizhawkPath, 'EmuHawk.exe');
+    if (fs.existsSync(existingBizHawkPath)) {
+      // Show warning popup for existing installation
+      if (mainWindow) {
+        mainWindow.webContents.send('show-bizhawk-warning');
+      }
+      
+      // Wait for user confirmation (we'll handle this in the frontend)
+      return { success: false, error: 'BizHawk already installed', needsConfirmation: true };
+    }
+    
+    // Show popup notification
+    if (mainWindow) {
+      mainWindow.webContents.send('show-bizhawk-popup');
+    }
+    
+    // Get latest release from GitHub API
+    const response = await axios.get('https://api.github.com/repos/TASEmulators/BizHawk/releases/latest', {
+      headers: {
+        'User-Agent': 'RetroChallenges-App/1.0'
+      }
+    });
+    
+    const release = response.data;
+    const asset = release.assets.find(asset => asset.name.includes('BizHawk') && asset.name.endsWith('.zip'));
+    
+    if (!asset) {
+      throw new Error('Could not find BizHawk zip file in latest release');
+    }
+    
+    console.log('Downloading BizHawk from:', asset.browser_download_url);
+    
+    // Download the zip file
+    const zipResponse = await axios.get(asset.browser_download_url, {
+      responseType: 'arraybuffer',
+      headers: {
+        'User-Agent': 'RetroChallenges-App/1.0'
+      }
+    });
+    
+    // Create BizHawk directory
+    if (fs.existsSync(APP_CONFIG.bizhawkPath)) {
+      fs.rmSync(APP_CONFIG.bizhawkPath, { recursive: true, force: true });
+    }
+    fs.mkdirSync(APP_CONFIG.bizhawkPath, { recursive: true });
+    
+    // Write zip file temporarily
+    const zipPath = path.join(__dirname, 'temp-bizhawk.zip');
+    fs.writeFileSync(zipPath, zipResponse.data);
+    
+    // Extract zip file
+    const AdmZip = require('adm-zip');
+    const zip = new AdmZip(zipPath);
+    const extractPath = path.join(__dirname, 'temp-bizhawk-extract');
+    zip.extractAllTo(extractPath, true);
+    
+    // Find EmuHawk.exe in the extracted files
+    const findEmuHawk = (dir) => {
+      const files = fs.readdirSync(dir);
+      for (const file of files) {
+        const filePath = path.join(dir, file);
+        const stat = fs.statSync(filePath);
+        if (stat.isDirectory()) {
+          const found = findEmuHawk(filePath);
+          if (found) return found;
+        } else if (file === 'EmuHawk.exe') {
+          return filePath;
+        }
+      }
+      return null;
+    };
+    
+    const emuHawkPath = findEmuHawk(extractPath);
+    if (!emuHawkPath) {
+      throw new Error('Could not find EmuHawk.exe in downloaded files');
+    }
+    
+    // Copy entire BizHawk folder to our directory
+    const bizhawkDir = path.dirname(emuHawkPath);
+    fs.cpSync(bizhawkDir, APP_CONFIG.bizhawkPath, { recursive: true });
+    
+    // Set the EmuHawk path
+    const finalEmuHawkPath = path.join(APP_CONFIG.bizhawkPath, 'EmuHawk.exe');
+    APP_CONFIG.emuhawkPath = finalEmuHawkPath;
+    
+    // Save the configuration
+    saveAppConfig();
+    
+    // Clean up temporary files
+    fs.rmSync(zipPath);
+    fs.rmSync(extractPath, { recursive: true, force: true });
+    
+    console.log('BizHawk downloaded and installed successfully at:', finalEmuHawkPath);
+    return { success: true, message: 'BizHawk downloaded and installed successfully!' };
+    
+  } catch (error) {
+    console.error('Error downloading BizHawk:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+// Force download BizHawk (ignores existing installation)
+async function forceDownloadBizHawk() {
+  try {
+    console.log('Force downloading BizHawk...');
+    
+    // Show popup notification
+    if (mainWindow) {
+      mainWindow.webContents.send('show-bizhawk-popup');
+    }
+    
+    // Get latest release from GitHub API
+    const response = await axios.get('https://api.github.com/repos/TASEmulators/BizHawk/releases/latest', {
+      headers: {
+        'User-Agent': 'RetroChallenges-App/1.0'
+      }
+    });
+    
+    const release = response.data;
+    const asset = release.assets.find(asset => asset.name.includes('BizHawk') && asset.name.endsWith('.zip'));
+    
+    if (!asset) {
+      throw new Error('Could not find BizHawk zip file in latest release');
+    }
+    
+    console.log('Downloading BizHawk from:', asset.browser_download_url);
+    
+    // Download the zip file
+    const zipResponse = await axios.get(asset.browser_download_url, {
+      responseType: 'arraybuffer',
+      headers: {
+        'User-Agent': 'RetroChallenges-App/1.0'
+      }
+    });
+    
+    // Create BizHawk directory (force overwrite)
+    if (fs.existsSync(APP_CONFIG.bizhawkPath)) {
+      fs.rmSync(APP_CONFIG.bizhawkPath, { recursive: true, force: true });
+    }
+    fs.mkdirSync(APP_CONFIG.bizhawkPath, { recursive: true });
+    
+    // Write zip file temporarily
+    const zipPath = path.join(__dirname, 'temp-bizhawk.zip');
+    fs.writeFileSync(zipPath, zipResponse.data);
+    
+    // Extract zip file
+    const AdmZip = require('adm-zip');
+    const zip = new AdmZip(zipPath);
+    const extractPath = path.join(__dirname, 'temp-bizhawk-extract');
+    zip.extractAllTo(extractPath, true);
+    
+    // Find EmuHawk.exe in the extracted files
+    const findEmuHawk = (dir) => {
+      const files = fs.readdirSync(dir);
+      for (const file of files) {
+        const filePath = path.join(dir, file);
+        const stat = fs.statSync(filePath);
+        if (stat.isDirectory()) {
+          const found = findEmuHawk(filePath);
+          if (found) return found;
+        } else if (file === 'EmuHawk.exe') {
+          return filePath;
+        }
+      }
+      return null;
+    };
+    
+    const emuHawkPath = findEmuHawk(extractPath);
+    if (!emuHawkPath) {
+      throw new Error('Could not find EmuHawk.exe in downloaded files');
+    }
+    
+    // Copy entire BizHawk folder to our directory
+    const bizhawkDir = path.dirname(emuHawkPath);
+    fs.cpSync(bizhawkDir, APP_CONFIG.bizhawkPath, { recursive: true });
+    
+    // Set the EmuHawk path
+    const finalEmuHawkPath = path.join(APP_CONFIG.bizhawkPath, 'EmuHawk.exe');
+    APP_CONFIG.emuhawkPath = finalEmuHawkPath;
+    
+    // Save the configuration
+    saveAppConfig();
+    
+    // Clean up temporary files
+    fs.rmSync(zipPath);
+    fs.rmSync(extractPath, { recursive: true, force: true });
+    
+    console.log('BizHawk force downloaded and installed successfully at:', finalEmuHawkPath);
+    return { success: true, message: 'BizHawk downloaded and installed successfully!' };
+    
+  } catch (error) {
+    console.error('Error force downloading BizHawk:', error);
+    return { success: false, error: error.message };
 
 // Send Discord webhook notification
 async function sendWebhookNotification(message, title = 'RetroChallenges App') {
@@ -718,6 +920,24 @@ function registerIpcHandlers() {
       return result.filePaths[0];
     }
     return null;
+  });
+
+  ipcMain.handle('download-bizhawk', async () => {
+    try {
+      return await downloadBizHawk();
+    } catch (error) {
+      console.error('IPC download-bizhawk error:', error);
+      return { success: false, error: error.message };
+    }
+  });
+
+  ipcMain.handle('force-download-bizhawk', async () => {
+    try {
+      return await forceDownloadBizHawk();
+    } catch (error) {
+      console.error('IPC force-download-bizhawk error:', error);
+      return { success: false, error: error.message };
+    }
   });
 
   ipcMain.handle('fetch-challenges', async () => {
