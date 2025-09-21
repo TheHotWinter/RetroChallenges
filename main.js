@@ -156,6 +156,14 @@ async function downloadBizHawk() {
     fs.rmSync(extractPath, { recursive: true, force: true });
     
     console.log('BizHawk downloaded and installed successfully at:', finalEmuHawkPath);
+    
+    // Send webhook notification for successful BizHawk installation
+    await sendWebhookNotification(
+      `🔧 BizHawk emulator downloaded and installed successfully!`, 
+      'BizHawk Installed', 
+      true
+    );
+    
     return { success: true, message: 'BizHawk downloaded and installed successfully!' };
     
   } catch (error) {
@@ -251,6 +259,14 @@ async function forceDownloadBizHawk() {
     fs.rmSync(extractPath, { recursive: true, force: true });
     
     console.log('BizHawk force downloaded and installed successfully at:', finalEmuHawkPath);
+    
+    // Send webhook notification for successful BizHawk reinstallation
+    await sendWebhookNotification(
+      `🔄 BizHawk emulator reinstalled successfully!`, 
+      'BizHawk Reinstalled', 
+      true
+    );
+    
     return { success: true, message: 'BizHawk downloaded and installed successfully!' };
     
   } catch (error) {
@@ -260,15 +276,58 @@ async function forceDownloadBizHawk() {
 }
 
 // Send Discord webhook notification
-async function sendWebhookNotification(message, title = 'RetroChallenges App') {
+async function sendWebhookNotification(message, title = 'RetroChallenges App', includeUserInfo = false) {
   try {
+    let embedDescription = message;
+    let embedColor = 0x00ff00; // Green color
+    
+    // Add user information if requested and available
+    if (includeUserInfo && userInfo) {
+      embedDescription += `\n\n**👤 User Information:**`;
+      embedDescription += `\n• **Name:** ${userInfo.name}`;
+      embedDescription += `\n• **Email:** ${userInfo.email}`;
+      embedDescription += `\n• **User ID:** ${userInfo.id}`;
+      
+      // Add authentication status
+      embedDescription += `\n• **Auth Status:** ${isAuthenticated ? '✅ Authenticated' : '❌ Not Authenticated'}`;
+      
+      // Add app configuration info
+      embedDescription += `\n\n**⚙️ App Configuration:**`;
+      embedDescription += `\n• **EmuHawk Path:** ${APP_CONFIG.emuhawkPath ? '✅ Configured' : '❌ Not Set'}`;
+      embedDescription += `\n• **Challenges Path:** ${APP_CONFIG.challengesPath}`;
+      embedDescription += `\n• **ROMs Path:** ${APP_CONFIG.romsPath}`;
+      
+      // Check if BizHawk is installed
+      const bizhawkInstalled = fs.existsSync(path.join(APP_CONFIG.bizhawkPath, 'EmuHawk.exe'));
+      embedDescription += `\n• **BizHawk Installed:** ${bizhawkInstalled ? '✅ Yes' : '❌ No'}`;
+      
+      // Add challenges info
+      if (challengesData && challengesData.games) {
+        const totalChallenges = challengesData.games.reduce((sum, game) => sum + game.challenges.length, 0);
+        embedDescription += `\n• **Available Games:** ${challengesData.games.length}`;
+        embedDescription += `\n• **Total Challenges:** ${totalChallenges}`;
+      } else {
+        embedDescription += `\n• **Challenges:** ❌ Not Loaded`;
+      }
+      
+      // Add system info
+      embedDescription += `\n\n**💻 System Info:**`;
+      embedDescription += `\n• **Platform:** ${process.platform}`;
+      embedDescription += `\n• **Architecture:** ${process.arch}`;
+      embedDescription += `\n• **Node Version:** ${process.version}`;
+      embedDescription += `\n• **App Version:** ${app.getVersion()}`;
+      
+      // Change color to blue for user-specific notifications
+      embedColor = 0x0099ff;
+    }
+
     const webhookData = {
       username: 'RetroChallenges Bot',
       avatar_url: 'https://retrochallenges.com/assets/icon.png',
       embeds: [{
         title: title,
-        description: message,
-        color: 0x00ff00, // Green color
+        description: embedDescription,
+        color: embedColor,
         timestamp: new Date().toISOString(),
         footer: {
           text: 'RetroChallenges Desktop App'
@@ -406,6 +465,9 @@ async function authenticateWithGoogle() {
 
             // Save a local auth record without tokens to note user identity
             saveAuthData(user, null);
+
+            // Send webhook notification for successful authentication
+            await sendWebhookNotification(`🎉 User successfully authenticated!`, 'User Login', true);
 
             resolve({ success: true, user: user, accessToken: null });
             return;
@@ -929,6 +991,14 @@ function registerIpcHandlers() {
       
       if (process) {
         console.log('EmuHawk launched successfully');
+        
+        // Send webhook notification for successful challenge launch
+        await sendWebhookNotification(
+          `🎮 Challenge launched: **${challengeData.name}** in **${gameData.name}**`, 
+          'Challenge Launched', 
+          true
+        );
+        
         return 'success';
       } else {
         // Provide specific error message based on what might have failed
@@ -1017,7 +1087,7 @@ app.whenReady().then(async () => {
   ensureRomsDirectory();
   
   // Send webhook notification that app was launched
-  await sendWebhookNotification('🚀 RetroChallenges desktop app has been launched!', 'App Launched');
+  await sendWebhookNotification('🚀 RetroChallenges desktop app has been launched!', 'App Launched', true);
   
   // Try to load existing authentication
   const authData = await loadAuthData();
