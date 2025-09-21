@@ -256,6 +256,8 @@ async function forceDownloadBizHawk() {
   } catch (error) {
     console.error('Error force downloading BizHawk:', error);
     return { success: false, error: error.message };
+  }
+}
 
 // Send Discord webhook notification
 async function sendWebhookNotification(message, title = 'RetroChallenges App') {
@@ -361,47 +363,6 @@ function createMainWindow() {
   });
 }
 
-function createAuthWindow() {
-  const authWindow = new BrowserWindow({
-    width: 500,
-    height: 600,
-    webPreferences: {
-      nodeIntegration: true,
-      contextIsolation: false
-    },
-    parent: mainWindow,
-    modal: true,
-    resizable: false
-  });
-
-  authWindow.loadFile('auth.html');
-  
-  // Handle external links in auth window - open in default browser
-  authWindow.webContents.setWindowOpenHandler(({ url }) => {
-    shell.openExternal(url);
-    return { action: 'deny' };
-  });
-
-  // Handle navigation to external URLs in auth window
-  authWindow.webContents.on('will-navigate', (event, navigationUrl) => {
-    const parsedUrl = new URL(navigationUrl);
-    
-    // If it's an external URL (not localhost or file://), open in default browser
-    if (parsedUrl.origin !== 'http://localhost:3000' && parsedUrl.protocol !== 'file:') {
-      event.preventDefault();
-      shell.openExternal(navigationUrl);
-    }
-  });
-  
-  authWindow.on('closed', () => {
-    if (!isAuthenticated) {
-      app.quit();
-    } else {
-      // Create main window after successful authentication
-      createMainWindow();
-    }
-  });
-}
 
 // Google OAuth implementation - Real OAuth flow with browser window
 async function authenticateWithGoogle() {
@@ -409,7 +370,6 @@ async function authenticateWithGoogle() {
     // Server-side OAuth: open the hosted login page which will perform the
     // authorization code exchange and store user info in the server session.
     const SERVER_LOGIN_URL = 'https://retrochallenges.com/public/auth/google/login.php';
-    const SERVER_USERINFO_URL = 'https://retrochallenges.com/public/auth/google/userinfo.php';
 
     const authWindow = new BrowserWindow({
       width: 600,
@@ -467,52 +427,6 @@ async function authenticateWithGoogle() {
 }
 
 // Exchange authorization code for access token
-async function exchangeCodeForTokens(code, clientId) {
-  try {
-    const response = await axios.post('https://oauth2.googleapis.com/token', {
-      client_id: clientId,
-      client_secret: CONFIG.google.clientSecret,
-      code: code,
-      grant_type: 'authorization_code',
-      redirect_uri: CONFIG.google.redirectUri
-    });
-
-    const { access_token, refresh_token, expires_in } = response.data;
-
-    // Get user info from Google API
-    const userResponse = await axios.get('https://www.googleapis.com/oauth2/v2/userinfo', {
-      headers: {
-        'Authorization': `Bearer ${access_token}`
-      }
-    });
-
-    const user = {
-      name: userResponse.data.name,
-      email: userResponse.data.email,
-      id: userResponse.data.id,
-      picture: userResponse.data.picture
-    };
-
-    // Store tokens for persistence
-    authTokens = {
-      access_token,
-      refresh_token,
-      expires_at: Date.now() + (expires_in * 1000)
-    };
-    
-    // Save authentication data to file
-    saveAuthData(user, authTokens);
-
-    return {
-      success: true,
-      user: user,
-      accessToken: access_token
-    };
-  } catch (error) {
-    console.error('Token exchange failed:', error.response?.data || error.message);
-    throw new Error(`Token exchange failed: ${error.response?.data?.error_description || error.message}`);
-  }
-}
 
 // Fetch challenges from remote URL
 async function fetchChallenges() {
