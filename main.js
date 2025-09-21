@@ -107,6 +107,23 @@ function createMainWindow() {
   if (process.env.NODE_ENV === 'development') {
     mainWindow.webContents.openDevTools();
   }
+
+  // Handle external links - open in default browser
+  mainWindow.webContents.setWindowOpenHandler(({ url }) => {
+    shell.openExternal(url);
+    return { action: 'deny' };
+  });
+
+  // Handle navigation to external URLs
+  mainWindow.webContents.on('will-navigate', (event, navigationUrl) => {
+    const parsedUrl = new URL(navigationUrl);
+    
+    // If it's an external URL (not localhost or file://), open in default browser
+    if (parsedUrl.origin !== 'http://localhost:3000' && parsedUrl.protocol !== 'file:') {
+      event.preventDefault();
+      shell.openExternal(navigationUrl);
+    }
+  });
 }
 
 function createAuthWindow() {
@@ -123,6 +140,23 @@ function createAuthWindow() {
   });
 
   authWindow.loadFile('auth.html');
+  
+  // Handle external links in auth window - open in default browser
+  authWindow.webContents.setWindowOpenHandler(({ url }) => {
+    shell.openExternal(url);
+    return { action: 'deny' };
+  });
+
+  // Handle navigation to external URLs in auth window
+  authWindow.webContents.on('will-navigate', (event, navigationUrl) => {
+    const parsedUrl = new URL(navigationUrl);
+    
+    // If it's an external URL (not localhost or file://), open in default browser
+    if (parsedUrl.origin !== 'http://localhost:3000' && parsedUrl.protocol !== 'file:') {
+      event.preventDefault();
+      shell.openExternal(navigationUrl);
+    }
+  });
   
   authWindow.on('closed', () => {
     if (!isAuthenticated) {

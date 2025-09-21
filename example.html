@@ -11,363 +11,103 @@
     <script src="https://unpkg.com/feather-icons"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
-        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&display=swap');
         
         :root {
-            --primary: #2563eb;
-            --primary-dark: #1d4ed8;
-            --secondary: #059669;
-            --dark: #0f172a;
-            --light: #1e293b;
-            --gray: #64748b;
-            --danger: #dc2626;
-            --warning: #d97706;
-            --success: #059669;
+            --primary: #4169E1;
+            --primary-dark: #1E3F8B;
+            --secondary: #10b981;
+            --dark: #1e293b;
+            --light: #f8fafc;
+            --gray: #94a3b8;
+            --danger: #ef4444;
+            --warning: #f59e0b;
+            --success: #10b981;
         }
-
+        
         body {
             font-family: 'Inter', sans-serif;
-            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
-            background-size: 400% 400%;
-            animation: gradientShift 15s ease infinite;
+            background: linear-gradient(135deg, #f3f4f6 0%, #e5e7eb 100%);
             min-height: 100vh;
-            color: #e2e8f0;
-            position: relative;
-            overflow-x: hidden;
-        }
-
-        @keyframes gradientShift {
-            0% {
-                background-position: 0% 50%;
-            }
-            50% {
-                background-position: 100% 50%;
-            }
-            100% {
-                background-position: 0% 50%;
-            }
-        }
-        
-        body::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: 
-                radial-gradient(circle at 10% 20%, rgba(30, 58, 138, 0.1) 0%, transparent 20%),
-                radial-gradient(circle at 90% 80%, rgba(30, 64, 175, 0.1) 0%, transparent 20%),
-                radial-gradient(circle at 50% 50%, rgba(59, 130, 246, 0.05) 0%, transparent 30%);
-            animation: bgAnimation 20s ease infinite;
-            z-index: -1;
-        }
-        
-        @keyframes bgAnimation {
-            0%, 100% { transform: scale(1); opacity: 1; }
-            50% { transform: scale(1.05); opacity: 0.8; }
+            color: var(--dark);
         }
         
         .nav-highlight {
             position: absolute;
             bottom: -1px;
             left: 0;
-            height: 4px;
-            background: linear-gradient(90deg, #3b82f6, #8b5cf6);
+            height: 3px;
+            background: #4169E1;
             transition: all 0.3s ease;
-            border-radius: 4px 4px 0 0;
-            box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3);
+            border-radius: 3px 3px 0 0;
         }
         
         .game-card {
-            transition: all 0.3s ease;
-            border: 2px solid transparent;
-            cursor: pointer;
-            background: linear-gradient(145deg, #1e293b, #0f172a);
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3), 0 1px 3px rgba(0, 0, 0, 0.4);
-            border: 1px solid #334155;
-            position: relative;
-            overflow: hidden;
-            color: #e2e8f0 !important;
-        }
-        
-        .game-card .game-title {
-            color: #e2e8f0 !important;
-        }
-        
-        .game-card .game-rom {
-            color: #94a3b8 !important;
-        }
-        
-        .game-card::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            height: 2px;
-            background: linear-gradient(90deg, transparent, #3b82f6, transparent);
-            transform: translateX(-100%);
-            transition: transform 0.6s ease;
-        }
-        
-        .game-card:hover::before {
-            transform: translateX(100%);
+            transition: all 0.2s ease;
+            border-left: 4px solid transparent;
         }
         
         .game-card:hover {
-            transform: translateY(-5px);
-            border-color: #3b82f6;
-            box-shadow: 0 12px 24px rgba(59, 130, 246, 0.2), 0 0 20px rgba(59, 130, 246, 0.1);
-            background: linear-gradient(145deg, #334155, #1e293b);
+            transform: translateY(-2px);
+            border-left-color: var(--primary);
         }
         
         .game-card.selected {
-            border-color: #3b82f6;
-            background: linear-gradient(145deg, rgba(59, 130, 246, 0.8), rgba(139, 92, 246, 0.9));
-            box-shadow: 0 8px 32px rgba(59, 130, 246, 0.25), 0 0 30px rgba(59, 130, 246, 0.2);
-            transform: translateY(-3px);
-            position: relative;
-            overflow: hidden;
-            color: #ffffff !important;
-        }
-        
-        .game-card.selected .game-title {
-            color: #ffffff !important;
-        }
-        
-        .game-card.selected .game-rom {
-            color: #e0e7ff !important;
-        }
-        
-        .game-card.selected::after {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            height: 4px;
-            background: linear-gradient(90deg, #4f46e5, #7c3aed);
+            border-left-color: var(--primary);
+            background-color: rgba(79, 70, 229, 0.05);
         }
         
         .challenge-item {
-            transition: all 0.3s ease;
-            border: 2px solid transparent;
-            cursor: pointer;
-            position: relative;
-            background: linear-gradient(145deg, #f8fafc, #ffffff);
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.03), 0 1px 2px rgba(0, 0, 0, 0.05);
-            border-radius: 8px;
-            color: #1f2937 !important;
-        }
-        
-        .challenge-item .challenge-name {
-            color: #1f2937 !important;
-        }
-        
-        .challenge-item .challenge-lua {
-            color: #6b7280 !important;
-        }
-        
-        .challenge-item::after {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            border-radius: 8px;
-            box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.02);
-            pointer-events: none;
+            transition: all 0.2s ease;
+            border-left: 3px solid transparent;
         }
         
         .challenge-item:hover {
-            transform: translateX(6px);
-            border-color: #4f46e5;
-            background: linear-gradient(145deg, #f5f7ff, #ffffff);
-            box-shadow: 0 6px 12px rgba(79, 70, 229, 0.15), 0 0 15px rgba(79, 70, 229, 0.1);
+            transform: translateX(2px);
+            border-left-color: var(--primary);
         }
         
         .challenge-item.selected {
-            border-color: #10b981;
-            background: linear-gradient(145deg, rgba(16, 185, 129, 0.9), rgba(5, 150, 105, 0.95));
-            box-shadow: 0 6px 18px rgba(16, 185, 129, 0.25), 0 0 20px rgba(16, 185, 129, 0.15);
-            transform: translateX(6px);
-            position: relative;
-            color: #ffffff !important;
-        }
-        
-        .challenge-item.selected .challenge-name {
-            color: #ffffff !important;
-        }
-        
-        .challenge-item.selected .challenge-lua {
-            color: #d1fae5 !important;
-        }
-        
-        .challenge-item.selected::before {
-            content: '';
-            position: absolute;
-            left: 0;
-            top: 0;
-            bottom: 0;
-            width: 4px;
-            background: linear-gradient(to bottom, #10b981, #059669);
-            border-radius: 4px 0 0 4px;
-        }
-        
-        
-        .challenge-launch-btn {
-            position: absolute;
-            top: 50%;
-            right: 8px;
-            transform: translateY(-50%);
-            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
-            color: white;
-            border: none;
-            border-radius: 6px;
-            padding: 6px 12px;
-            font-size: 12px;
-            font-weight: 500;
-            cursor: pointer;
-            opacity: 0;
-            transition: all 0.3s ease;
-            box-shadow: 0 2px 8px rgba(65, 105, 225, 0.3);
-        }
-        
-        .challenge-item:hover .challenge-launch-btn {
-            opacity: 1;
-            transform: translateY(-50%) scale(1.05);
-        }
-        
-        .challenge-item.selected .challenge-launch-btn {
-            opacity: 1;
-            transform: translateY(-50%) scale(1.1);
-            box-shadow: 0 4px 12px rgba(65, 105, 225, 0.4);
-        }
-        
-        .challenge-launch-btn:hover {
-            transform: translateY(-50%) scale(1.15);
-            box-shadow: 0 6px 16px rgba(65, 105, 225, 0.5);
+            border-left-color: var(--success);
+            background-color: rgba(16, 185, 129, 0.05);
         }
         
         .status-indicator {
-            width: 12px;
-            height: 12px;
+            width: 10px;
+            height: 10px;
             border-radius: 50%;
             display: inline-block;
             margin-right: 8px;
-            box-shadow: 0 0 8px currentColor;
-            position: relative;
-        }
-        
-        .status-indicator::after {
-            content: '';
-            position: absolute;
-            top: 2px;
-            left: 2px;
-            width: 8px;
-            height: 8px;
-            border-radius: 50%;
-            background: white;
-            opacity: 0.7;
         }
         
         .status-ready {
-            background: linear-gradient(145deg, #10b981, #059669);
-            animation: pulse 2s infinite;
+            background-color: var(--success);
         }
         
         .status-warning {
-            background: linear-gradient(145deg, #f59e0b, #d97706);
-            animation: pulse 1.5s infinite;
+            background-color: var(--warning);
         }
         
         .status-error {
-            background: linear-gradient(145deg, #ef4444, #dc2626);
-            animation: pulse 1s infinite;
+            background-color: var(--danger);
         }
         
-        @keyframes pulse {
-            0% { opacity: 1; }
-            50% { opacity: 0.7; }
-            100% { opacity: 1; }
-        }
-
         .launch-btn {
-            background: linear-gradient(145deg, #4f46e5, #7c3aed);
-            transition: all 0.3s ease;
-            position: relative;
-            overflow: hidden;
-            box-shadow: 0 4px 6px rgba(79, 70, 229, 0.25), 0 0 15px rgba(79, 70, 229, 0.2);
-        }
-        
-        .launch-btn::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: -100%;
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
-            transition: left 0.5s;
-        }
-        
-        .launch-btn:hover::before {
-            left: 100%;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            transition: all 0.2s ease;
         }
         
         .launch-btn:hover {
-            transform: translateY(-2px) scale(1.02);
-            box-shadow: 0 8px 15px rgba(79, 70, 229, 0.35), 0 0 20px rgba(79, 70, 229, 0.3);
+            transform: translateY(-2px);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
         }
         
-        .launch-btn:active {
-            transform: translateY(0) scale(0.98);
-        }
-        
-        .launch-btn::after {
-            content: '';
-            position: absolute;
-            top: -50%;
-            left: -50%;
-            width: 200%;
-            height: 200%;
-            background: linear-gradient(
-                to bottom right,
-                rgba(255, 255, 255, 0.3) 0%,
-                rgba(255, 255, 255, 0) 60%
-            );
-            transform: rotate(30deg);
-            transition: all 0.3s ease;
-        }
-        
-        .launch-btn:hover::after {
-            left: 100%;
-        }
-
         .spinner {
             animation: spin 1s linear infinite;
-            border: 3px solid rgba(79, 70, 229, 0.1);
+            border: 2px solid rgba(255, 255, 255, 0.3);
             border-radius: 50%;
-            border-top-color: #4f46e5;
-            border-right-color: #7c3aed;
-            height: 24px;
-            width: 24px;
-            position: relative;
-        }
-        
-        .spinner::after {
-            content: '';
-            position: absolute;
-            top: -3px;
-            left: -3px;
-            right: -3px;
-            bottom: -3px;
-            border: 3px solid transparent;
-            border-radius: 50%;
-            border-top-color: rgba(124, 58, 237, 0.3);
-            animation: spin 1.5s linear infinite reverse;
+            border-top-color: var(--primary);
+            height: 20px;
+            width: 20px;
         }
         
         @keyframes spin {
@@ -377,49 +117,49 @@
 </head>
 <body class="antialiased">
     <!-- Header -->
-    <header class="bg-slate-800 shadow-lg sticky top-0 z-10 border-b border-slate-700">
+    <header class="bg-white shadow-sm sticky top-0 z-10">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="flex justify-between items-center h-16">
                 <!-- Logo -->
                 <div class="flex items-center">
                     <div class="flex-shrink-0 flex items-center">
-                        <img src="assets/icon.png" alt="Retro Challenges" class="h-8 w-8 rounded-lg">
-                        <span class="ml-2 text-xl font-bold text-white" style="font-family: 'Orbitron', monospace; font-weight: 700;">Retro Challenges</span>
-            </div>
+                        <i data-feather="cpu" class="text-indigo-600 h-8 w-8"></i>
+                        <span class="ml-2 text-xl font-bold text-gray-900">NES Challenges</span>
+                    </div>
                 </div>
                 
                 <!-- User Info -->
                 <div class="flex items-center space-x-4">
                     <div class="flex items-center space-x-2">
                         <div class="relative">
-                            <div class="h-10 w-10 rounded-full bg-indigo-600 flex items-center justify-center text-white font-medium cursor-pointer hover:bg-indigo-700 transition-colors">
+                            <div class="h-10 w-10 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600 font-medium cursor-pointer hover:bg-indigo-200 transition-colors">
                                 <i data-feather="user"></i>
                             </div>
                         </div>
                         <div class="text-right">
-                            <div id="userName" class="text-sm font-medium text-white">Not authenticated</div>
-                            <div id="userEmail" class="text-xs text-gray-300">Click to sign in</div>
+                            <div id="userName" class="text-sm font-medium text-gray-900">Not authenticated</div>
+                            <div id="userEmail" class="text-xs text-gray-500">Click to sign in</div>
                         </div>
                     </div>
-                    <button id="signInBtn" class="px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                    <button id="signInBtn" class="hidden px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
                         Sign In
                     </button>
                     <button id="logoutBtn" class="hidden px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-gray-600 hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500">
-                Logout
-            </button>
+                        Logout
+                    </button>
                 </div>
             </div>
         </div>
     </header>
 
     <!-- Main Content -->
-    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 pb-20">
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
         <!-- Navigation Tabs -->
         <div class="relative mb-8">
             <div class="flex border-b border-gray-200">
                 <button class="nav-tab active relative py-4 px-6 text-sm font-medium" data-page="challenges">
                     Challenges
-            </button>
+                </button>
                 <button class="nav-tab relative py-4 px-6 text-sm font-medium" data-page="configuration">
                     Configuration
                 </button>
@@ -427,59 +167,82 @@
                     Information
                 </button>
                 <div class="nav-highlight" style="width: 100px; left: 0;"></div>
+            </div>
         </div>
-    </div>
 
         <!-- Pages Content -->
         <div class="content-area">
             <!-- Challenges Page -->
             <div class="page active" id="challenges-page">
-                <div class="space-y-8">
-                    <!-- Challenges Section -->
-                    <div class="bg-slate-800 rounded-lg shadow-lg p-6 border border-slate-700">
-                        <div class="flex justify-between items-center mb-6">
-                            <h3 class="text-lg font-medium text-white flex items-center">
-                                <i data-feather="award" class="mr-2 text-blue-700"></i>
-                                Available Challenges
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                    <!-- Sidebar -->
+                    <div class="lg:col-span-1 space-y-6">
+                        <!-- Launch Card -->
+                        <div class="bg-white rounded-lg shadow p-6">
+                            <h3 class="text-lg font-medium text-gray-900 flex items-center">
+                                <i data-feather="rocket" class="mr-2 text-indigo-600"></i>
+                                Launch Challenge
                             </h3>
-                            <button id="refreshChallenges" class="text-sm font-medium text-indigo-600 hover:text-indigo-800 flex items-center">
-                                <i data-feather="refresh-cw" class="mr-1 h-4 w-4"></i>
-                                Refresh
-                            </button>
-                </div>
+                            <div class="mt-4">
+                                <button id="launchChallenge" class="launch-btn w-full py-3 px-4 rounded-md text-white font-medium flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed" disabled>
+                                    <i data-feather="play" class="mr-2"></i>
+                                    Launch Challenge
+                                </button>
+                            </div>
+                            <div id="launchLoading" class="hidden mt-4 text-center">
+                                <div class="spinner mx-auto"></div>
+                                <p class="mt-2 text-sm text-gray-500">Launching...</p>
+                            </div>
+                        </div>
 
-                        <div id="challengesLoading" class="text-center py-8">
-                            <div class="spinner mx-auto"></div>
-                            <p class="mt-2 text-sm text-gray-500">Loading challenges...</p>
-                </div>
+                        <!-- Status Card -->
+                        <div id="challengeStatus" class="bg-white rounded-lg shadow p-6 hidden">
+                            <h3 class="text-lg font-medium text-gray-900 flex items-center">
+                                <i data-feather="activity" class="mr-2 text-indigo-600"></i>
+                                Challenge Status
+                            </h3>
+                            <div id="statusMessage" class="mt-2 text-sm text-gray-600">
+                                Waiting for challenge completion...
+                            </div>
+                            <div id="challengeData" class="mt-4 bg-gray-50 p-4 rounded-md text-xs font-mono overflow-x-auto"></div>
+                        </div>
+                    </div>
 
-                        <div id="challengesError" class="hidden bg-red-50 border-l-4 border-red-400 p-4 mb-6">
-                            <div class="flex">
-                                <div class="flex-shrink-0">
-                                    <i data-feather="alert-triangle" class="h-5 w-5 text-red-400"></i>
-                                </div>
-                                <div class="ml-3">
-                                    <p id="errorMessage" class="text-sm text-red-700"></p>
+                    <!-- Main Content -->
+                    <div class="lg:col-span-2">
+                        <div class="bg-white rounded-lg shadow p-6">
+                            <div class="flex justify-between items-center mb-6">
+                                <h3 class="text-lg font-medium text-gray-900 flex items-center">
+                                    <i data-feather="award" class="mr-2 text-blue-700"></i>
+                                    Available Challenges
+                                </h3>
+                                <button id="refreshChallenges" class="text-sm font-medium text-indigo-600 hover:text-indigo-800 flex items-center">
+                                    <i data-feather="refresh-cw" class="mr-1 h-4 w-4"></i>
+                                    Refresh
+                                </button>
+                            </div>
+
+                            <div id="challengesLoading" class="text-center py-8">
+                                <div class="spinner mx-auto"></div>
+                                <p class="mt-2 text-sm text-gray-500">Loading challenges...</p>
+                            </div>
+
+                            <div id="challengesError" class="hidden bg-red-50 border-l-4 border-red-400 p-4 mb-6">
+                                <div class="flex">
+                                    <div class="flex-shrink-0">
+                                        <i data-feather="alert-triangle" class="h-5 w-5 text-red-400"></i>
+                                    </div>
+                                    <div class="ml-3">
+                                        <p id="errorMessage" class="text-sm text-red-700"></p>
+                                    </div>
                                 </div>
                             </div>
-            </div>
 
-                        <div id="gamesGrid" class="grid grid-cols-1 gap-6"></div>
-                </div>
-
-                    <!-- Status Section -->
-                    <div id="challengeStatus" class="bg-white rounded-lg shadow p-6 hidden">
-                        <h3 class="text-lg font-medium text-gray-900 flex items-center">
-                            <i data-feather="activity" class="mr-2 text-indigo-600"></i>
-                            Challenge Status
-                        </h3>
-                        <div id="statusMessage" class="mt-2 text-sm text-gray-600">
-                            Waiting for challenge completion...
-                </div>
-                        <div id="challengeData" class="mt-4 bg-gray-50 p-4 rounded-md text-xs font-mono overflow-x-auto"></div>
+                            <div id="gamesGrid" class="grid grid-cols-1 gap-6"></div>
+                        </div>
                     </div>
+                </div>
             </div>
-        </div>
 
             <!-- Configuration Page -->
             <div class="page hidden" id="configuration-page">
@@ -487,32 +250,32 @@
                     <!-- Sidebar -->
                     <div class="lg:col-span-1 space-y-6">
                         <!-- EmuHawk Config -->
-                        <div class="bg-slate-800 rounded-lg shadow-lg p-6 border border-slate-700">
-                            <h3 class="text-lg font-medium text-white flex items-center">
+                        <div class="bg-white rounded-lg shadow p-6">
+                            <h3 class="text-lg font-medium text-gray-900 flex items-center">
                                 <span id="emuhawkStatus" class="status-indicator status-warning"></span>
                                 <i data-feather="settings" class="mr-2 text-blue-700"></i>
                                 EmuHawk Configuration
                             </h3>
                             <div class="mt-4">
-                                <label class="block text-sm font-medium text-gray-300 mb-1">EmuHawk Path</label>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">EmuHawk Path</label>
                                 <div class="flex space-x-2">
-                                    <input id="emuhawkPath" type="text" class="flex-1 min-w-0 block w-full px-3 py-2 rounded-md border border-slate-600 bg-slate-700 text-white shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" placeholder="Select EmuHawk.exe" readonly>
-                                    <button id="autoDetectEmuhawk" class="inline-flex items-center px-3 py-2 border border-slate-600 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-300 bg-slate-700 hover:bg-slate-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500" title="Auto-detect EmuHawk">
+                                    <input id="emuhawkPath" type="text" class="flex-1 min-w-0 block w-full px-3 py-2 rounded-md border border-gray-300 shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" placeholder="Select EmuHawk.exe" readonly>
+                                    <button id="autoDetectEmuhawk" class="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500" title="Auto-detect EmuHawk">
                                         <i data-feather="search" class="h-4 w-4"></i>
                                     </button>
                                     <button id="selectEmuhawk" class="inline-flex items-center px-3 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
                                         Browse
                                     </button>
-            </div>
-            </div>
+                                </div>
+                            </div>
                         </div>
-        </div>
+                    </div>
 
                     <!-- Main Content -->
                     <div class="lg:col-span-2">
                         <!-- ROM Management -->
-                        <div class="bg-slate-800 rounded-lg shadow-lg p-6 border border-slate-700">
-                            <h3 class="text-lg font-medium text-white flex items-center">
+                        <div class="bg-white rounded-lg shadow p-6">
+                            <h3 class="text-lg font-medium text-gray-900 flex items-center">
                                 <i data-feather="folder" class="mr-2 text-blue-700"></i>
                                 ROM Management
                             </h3>
@@ -520,15 +283,15 @@
                                 <button id="openRomFolder" class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
                                     <i data-feather="folder-plus" class="mr-2 h-4 w-4"></i>
                                     Open ROM Folder
-            </button>
+                                </button>
                                 <p class="mt-3 text-sm text-gray-500">
                                     Place your legally acquired ROM files here. The app will automatically detect the correct ROM files for each challenge.
                                 </p>
                             </div>
                         </div>
                     </div>
+                </div>
             </div>
-        </div>
 
             <!-- Information Page -->
             <div class="page hidden" id="information-page">
@@ -536,69 +299,33 @@
                     <!-- Sidebar -->
                     <div class="lg:col-span-1 space-y-6">
                         <!-- Quick Links -->
-                        <div class="bg-slate-800 rounded-lg shadow-lg p-6 border border-slate-700">
-                            <h3 class="text-lg font-medium text-white flex items-center">
+                        <div class="bg-white rounded-lg shadow p-6">
+                            <h3 class="text-lg font-medium text-gray-900 flex items-center">
                                 <i data-feather="link" class="mr-2 text-blue-700"></i>
                                 Quick Links
                             </h3>
                             <div class="mt-4 space-y-3">
-                                <a href="https://retrochallenges.com" target="_blank" rel="noopener noreferrer" class="group flex items-center px-3 py-2 text-sm font-medium rounded-md text-gray-300 hover:text-white hover:bg-slate-700">
+                                <a href="https://retrochallenges.com" target="_blank" class="group flex items-center px-3 py-2 text-sm font-medium rounded-md text-gray-700 hover:text-gray-900 hover:bg-gray-50">
                                     <i data-feather="globe" class="flex-shrink-0 h-5 w-5 text-gray-400 group-hover:text-gray-500"></i>
                                     <span class="ml-3">Our Website</span>
                                 </a>
-                                <a href="https://retrochallenges.com/lua.html" target="_blank" rel="noopener noreferrer" class="group flex items-center px-3 py-2 text-sm font-medium rounded-md text-gray-300 hover:text-white hover:bg-slate-700">
+                                <a href="https://github.com/mattd1980/retrochallenges-assets/blob/main/HowToAddChallenges.md" target="_blank" class="group flex items-center px-3 py-2 text-sm font-medium rounded-md text-gray-700 hover:text-gray-900 hover:bg-gray-50">
                                     <i data-feather="book" class="flex-shrink-0 h-5 w-5 text-gray-400 group-hover:text-gray-500"></i>
                                     <span class="ml-3">Getting Started Guide</span>
                                 </a>
-                                <a href="https://discord.gg/JsyGz4nM3e" target="_blank" rel="noopener noreferrer" class="group flex items-center px-3 py-2 text-sm font-medium rounded-md text-gray-300 hover:text-white hover:bg-slate-700">
+                                <a href="https://discord.gg/retrochallenges" target="_blank" class="group flex items-center px-3 py-2 text-sm font-medium rounded-md text-gray-700 hover:text-gray-900 hover:bg-gray-50">
                                     <i data-feather="message-square" class="flex-shrink-0 h-5 w-5 text-gray-400 group-hover:text-gray-500"></i>
                                     <span class="ml-3">Join us on Discord</span>
                                 </a>
                             </div>
-                            
-                            <div class="mt-8">
-                                <h3 class="text-lg font-medium text-white flex items-center">
-                                    <i data-feather="tv" class="mr-2 text-purple-700"></i>
-                                    Twitch Channels
-                                </h3>
-                                <p class="mt-2 text-sm text-gray-400">
-                                    The creators might be online working on a challenge, check them out on Twitch!
-                                </p>
-                                <div class="mt-4 space-y-3">
-                                    <a href="https://twitch.tv/mattd1980" target="_blank" rel="noopener noreferrer" class="group flex items-center px-3 py-2 text-sm font-medium rounded-md text-gray-300 hover:text-white hover:bg-slate-700">
-                                        <i data-feather="play-circle" class="flex-shrink-0 h-5 w-5 text-purple-400 group-hover:text-purple-300"></i>
-                                        <span class="ml-3">twitch.tv/mattd1980</span>
-                                    </a>
-                                    <a href="https://twitch.tv/jodosh" target="_blank" rel="noopener noreferrer" class="group flex items-center px-3 py-2 text-sm font-medium rounded-md text-gray-300 hover:text-white hover:bg-slate-700">
-                                        <i data-feather="play-circle" class="flex-shrink-0 h-5 w-5 text-purple-400 group-hover:text-purple-300"></i>
-                                        <span class="ml-3">twitch.tv/jodosh</span>
-                                    </a>
-                                </div>
-                            </div>
-                            
-                            <div class="mt-8">
-                                <h3 class="text-lg font-medium text-white flex items-center">
-                                    <i data-feather="shield" class="mr-2 text-green-700"></i>
-                                    Privacy & Legal
-                                </h3>
-                                <p class="mt-2 text-sm text-gray-400">
-                                    Learn how we protect your data and respect your privacy.
-                                </p>
-                                <div class="mt-4 space-y-3">
-                                    <a href="https://retrochallenges.com/privacy-policy.html" target="_blank" rel="noopener noreferrer" class="group flex items-center px-3 py-2 text-sm font-medium rounded-md text-gray-300 hover:text-white hover:bg-slate-700">
-                                        <i data-feather="file-text" class="flex-shrink-0 h-5 w-5 text-green-400 group-hover:text-green-300"></i>
-                                        <span class="ml-3">Privacy Policy</span>
-                                    </a>
-                                </div>
-                            </div>
-        </div>
-    </div>
+                        </div>
+                    </div>
 
                     <!-- Main Content -->
                     <div class="lg:col-span-2">
                         <!-- About -->
-                        <div class="bg-slate-800 rounded-lg shadow-lg p-6 border border-slate-700">
-                            <h3 class="text-lg font-medium text-white flex items-center">
+                        <div class="bg-white rounded-lg shadow p-6">
+                            <h3 class="text-lg font-medium text-gray-900 flex items-center">
                                 <i data-feather="info" class="mr-2 text-blue-700"></i>
                                 About Retro Challenges
                             </h3>
@@ -606,7 +333,7 @@
                                 <div class="flex">
                                     <div class="flex-shrink-0">
                                         <i data-feather="thumbs-up" class="h-5 w-5 text-blue-400"></i>
-    </div>
+                                    </div>
                                     <div class="ml-3">
                                         <p class="text-sm text-blue-700">
                                             Special thanks to <strong>BizHawk</strong> for their amazing emulator that helps us achieve this project.
@@ -615,23 +342,23 @@
                                 </div>
                             </div>
                             <div class="mt-6">
-                                <h4 class="text-md font-medium text-white mb-3">How to Get Started</h4>
+                                <h4 class="text-md font-medium text-gray-900 mb-3">How to Get Started</h4>
                                 <ol class="space-y-3">
                                     <li class="flex items-start">
                                         <span class="flex-shrink-0 h-6 w-6 flex items-center justify-center rounded-full bg-indigo-100 text-indigo-800 font-medium text-sm">1</span>
-                                        <span class="ml-3 text-sm text-gray-300">Configure EmuHawk path in the Configuration tab</span>
+                                        <span class="ml-3 text-sm text-gray-700">Configure EmuHawk path in the Configuration tab</span>
                                     </li>
                                     <li class="flex items-start">
                                         <span class="flex-shrink-0 h-6 w-6 flex items-center justify-center rounded-full bg-indigo-100 text-indigo-800 font-medium text-sm">2</span>
-                                        <span class="ml-3 text-sm text-gray-300">Place your ROM files in the ROM folder</span>
+                                        <span class="ml-3 text-sm text-gray-700">Place your ROM files in the ROM folder</span>
                                     </li>
                                     <li class="flex items-start">
                                         <span class="flex-shrink-0 h-6 w-6 flex items-center justify-center rounded-full bg-indigo-100 text-indigo-800 font-medium text-sm">3</span>
-                                        <span class="ml-3 text-sm text-gray-300">Click Refresh to download the latest challenges</span>
+                                        <span class="ml-3 text-sm text-gray-700">Click Refresh to download the latest challenges</span>
                                     </li>
                                     <li class="flex items-start">
                                         <span class="flex-shrink-0 h-6 w-6 flex items-center justify-center rounded-full bg-indigo-100 text-indigo-800 font-medium text-sm">4</span>
-                                        <span class="ml-3 text-sm text-gray-300">Select a challenge and click Launch Challenge</span>
+                                        <span class="ml-3 text-sm text-gray-700">Select a challenge and click Launch Challenge</span>
                                     </li>
                                 </ol>
                             </div>
@@ -642,12 +369,12 @@
         </div>
     </main>
 
-    <!-- Fixed Footer -->
-    <footer class="fixed bottom-0 left-0 right-0 bg-slate-800 border-t border-slate-700 z-50">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3">
-            <div class="flex items-center justify-center text-xs text-gray-400">
-                <span>© 2025 Retro Challenges</span>
-            </div>
+    <!-- Footer -->
+    <footer class="bg-white border-t border-gray-200 mt-12">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+            <p class="text-center text-sm text-gray-500">
+                Retro Challenges - Retro Gaming Platform
+            </p>
         </div>
     </footer>
 
@@ -660,6 +387,7 @@
         // Navigation functionality
         function initNavigation() {
             const navTabs = document.querySelectorAll('.nav-tab');
+            const pages = document.querySelectorAll('.page');
             const highlight = document.querySelector('.nav-highlight');
             
             // Set initial highlight position
@@ -680,20 +408,10 @@
                     
                     // Update active states
                     navTabs.forEach(t => t.classList.remove('active'));
+                    pages.forEach(p => p.classList.remove('active'));
                     
-                    // Hide all pages
-                    document.querySelectorAll('[id$="-page"]').forEach(page => {
-                        page.classList.add('hidden');
-                        page.classList.remove('active');
-                    });
-                    
-                    // Show target page
                     tab.classList.add('active');
-                    const targetPageElement = document.getElementById(`${targetPage}-page`);
-                    if (targetPageElement) {
-                        targetPageElement.classList.remove('hidden');
-                        targetPageElement.classList.add('active');
-                    }
+                    document.getElementById(`${targetPage}-page`).classList.add('active');
                 });
             });
         }
@@ -707,7 +425,7 @@
                 gamesGrid.innerHTML = `
                     <div class="text-center py-8">
                         <i data-feather="frown" class="mx-auto h-12 w-12 text-gray-400"></i>
-                        <h3 class="mt-2 text-sm font-medium text-white">No challenges available</h3>
+                        <h3 class="mt-2 text-sm font-medium text-gray-900">No challenges available</h3>
                         <p class="mt-1 text-sm text-gray-500">Try refreshing the challenges or check your connection.</p>
                     </div>
                 `;
@@ -717,11 +435,11 @@
 
             challengesData.games.forEach(game => {
                 const gameCard = document.createElement('div');
-                gameCard.className = 'game-card bg-slate-800 rounded-lg shadow-lg p-6 border border-slate-700';
+                gameCard.className = 'game-card bg-white rounded-lg shadow p-6';
                 gameCard.innerHTML = `
                     <div class="flex items-start justify-between">
                         <div>
-                            <h3 class="game-title text-lg font-medium text-white">${game.name}</h3>
+                            <h3 class="game-title text-lg font-medium text-gray-900">${game.name}</h3>
                             <p class="game-rom text-sm text-gray-500 flex items-center">
                                 <i data-feather="file" class="mr-2 h-4 w-4"></i>
                                 ${game.rom}
@@ -739,10 +457,6 @@
                                     <i data-feather="code" class="mr-2 h-3 w-3"></i>
                                     Script: ${challenge.lua}
                                 </div>
-                                <button class="challenge-launch-btn" data-game='${JSON.stringify(game)}' data-challenge='${JSON.stringify(challenge)}'>
-                                    <i data-feather="play" class="h-3 w-3 mr-1"></i>
-                                    Launch
-                                </button>
                             </li>
                         `).join('')}
                     </ul>
@@ -753,21 +467,6 @@
                     item.addEventListener('click', (e) => {
                         e.stopPropagation();
                         selectChallenge(JSON.parse(item.dataset.game), JSON.parse(item.dataset.challenge));
-                    });
-                });
-
-                // Add click handlers for launch buttons
-                gameCard.querySelectorAll('.challenge-launch-btn').forEach(btn => {
-                    btn.addEventListener('click', async (e) => {
-                        e.stopPropagation();
-                        const game = JSON.parse(btn.dataset.game);
-                        const challenge = JSON.parse(btn.dataset.challenge);
-                        
-                        // Select the challenge first
-                        selectChallenge(game, challenge);
-                        
-                        // Then launch it
-                        await launchSelectedChallenge();
                     });
                 });
 
@@ -821,10 +520,10 @@
             updateStatusIndicators();
         }
 
-
         // Enhanced status indicators
         function updateStatusIndicators() {
             const emuhawkStatus = document.getElementById('emuhawkStatus');
+            const launchBtn = document.getElementById('launchChallenge');
 
             // EmuHawk status
             if (config.emuhawkPath) {
@@ -833,6 +532,17 @@
             } else {
                 emuhawkStatus.className = 'status-indicator status-warning';
                 emuhawkStatus.setAttribute('title', 'EmuHawk not configured');
+            }
+
+            // Enable launch button if EmuHawk configured and challenge selected
+            if (config.emuhawkPath && selectedGame && selectedChallenge) {
+                launchBtn.disabled = false;
+                launchBtn.classList.remove('opacity-50');
+                launchBtn.classList.remove('cursor-not-allowed');
+            } else {
+                launchBtn.disabled = true;
+                launchBtn.classList.add('opacity-50');
+                launchBtn.classList.add('cursor-not-allowed');
             }
         }
 
@@ -878,7 +588,6 @@
             });
         }
 
-
         // Initialize
         document.addEventListener('DOMContentLoaded', () => {
             initNavigation();
@@ -910,39 +619,28 @@
                     document.getElementById('userEmail').textContent = userInfo.email || 'Authenticated';
                     
                     // Set profile picture or fallback to initials
-                    const avatarElement = document.querySelector('.h-10.w-10.rounded-full');
-                    if (avatarElement) {
+                    const avatarElement = document.querySelector('.user-avatar');
                     if (userInfo.picture) {
-                            avatarElement.innerHTML = `<img src="${userInfo.picture}" alt="${userInfo.name}" class="h-10 w-10 rounded-full object-cover" onerror="this.style.display='none'; this.parentElement.innerHTML='<i data-feather=\\'user\\'></i>'; feather.replace();">`;
+                        avatarElement.innerHTML = `<img src="${userInfo.picture}" alt="${userInfo.name}" onerror="this.style.display='none'; this.parentElement.innerHTML='<i data-feather=\\'user\\'></i>'; feather.replace();">`;
                     } else {
-                            avatarElement.innerHTML = `<i data-feather="user"></i>`;
-                        }
+                        avatarElement.innerHTML = `<i data-feather="user"></i>`;
                     }
                     
                     document.getElementById('logoutBtn').classList.remove('hidden');
                     document.getElementById('signInBtn').classList.add('hidden');
                     
                     // Add visual feedback that user is authenticated
-                    document.getElementById('userName').classList.remove('text-red-600');
                     document.getElementById('userName').classList.add('text-green-600');
-                    document.getElementById('userEmail').classList.remove('text-red-500');
                     document.getElementById('userEmail').classList.add('text-green-500');
                 } else {
                     // Show not authenticated state
                     document.getElementById('userName').textContent = 'Not authenticated';
-                    document.getElementById('userEmail').textContent = 'Click to sign in';
-                    
-                    const avatarElement = document.querySelector('.h-10.w-10.rounded-full');
-                    if (avatarElement) {
-                        avatarElement.innerHTML = '<i data-feather="user"></i>';
-                    }
-                    
+                    document.getElementById('userEmail').textContent = 'Please sign in';
+                    document.querySelector('.user-avatar').innerHTML = '<i data-feather="user"></i>';
                     document.getElementById('logoutBtn').classList.add('hidden');
                     document.getElementById('signInBtn').classList.remove('hidden');
                     
-                    document.getElementById('userName').classList.remove('text-green-600');
                     document.getElementById('userName').classList.add('text-red-600');
-                    document.getElementById('userEmail').classList.remove('text-green-500');
                     document.getElementById('userEmail').classList.add('text-red-500');
                 }
                 feather.replace();
@@ -951,18 +649,11 @@
                 // Show error state
                 document.getElementById('userName').textContent = 'Authentication error';
                 document.getElementById('userEmail').textContent = 'Please try again';
-                
-                const avatarElement = document.querySelector('.h-10.w-10.rounded-full');
-                if (avatarElement) {
-                    avatarElement.innerHTML = '<i data-feather="alert-triangle"></i>';
-                }
-                
+                document.querySelector('.user-avatar').innerHTML = '<i data-feather="alert-triangle"></i>';
                 document.getElementById('logoutBtn').classList.add('hidden');
                 document.getElementById('signInBtn').classList.remove('hidden');
                 
-                document.getElementById('userName').classList.remove('text-green-600');
                 document.getElementById('userName').classList.add('text-red-600');
-                document.getElementById('userEmail').classList.remove('text-green-500');
                 document.getElementById('userEmail').classList.add('text-red-500');
                 feather.replace();
             }
@@ -1036,7 +727,7 @@
                 const result = await ipcRenderer.invoke('open-rom-folder');
                 if (result.success) {
                     showNotification(`ROM folder opened: ${result.path}`, 'success');
-            } else {
+                } else {
                     showNotification(`Failed to open ROM folder: ${result.error}`, 'error');
                 }
             } catch (error) {
@@ -1047,14 +738,13 @@
 
         document.getElementById('refreshChallenges').addEventListener('click', loadChallenges);
 
-        // Launch selected challenge function
-        async function launchSelectedChallenge() {
-            if (!selectedGame || !selectedChallenge) {
-                showNotification('Please select a challenge first', 'warning');
-                return;
-            }
-
+        document.getElementById('launchChallenge').addEventListener('click', async () => {
+            const launchBtn = document.getElementById('launchChallenge');
+            const loading = document.getElementById('launchLoading');
             const statusCard = document.getElementById('challengeStatus');
+
+            launchBtn.disabled = true;
+            loading.classList.remove('hidden');
             statusCard.classList.remove('hidden');
 
             try {
@@ -1076,9 +766,11 @@
                 const errorMsg = 'Failed to launch challenge: Unable to start the challenge. Please check that EmuHawk is properly configured and try again.';
                 document.getElementById('statusMessage').textContent = errorMsg;
                 showNotification(errorMsg, 'error');
+            } finally {
+                loading.classList.add('hidden');
+                launchBtn.disabled = false;
             }
-        }
-
+        });
 
         // Listen for challenge completion
         ipcRenderer.on('challenge-completed', (event, data) => {
