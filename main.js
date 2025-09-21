@@ -46,12 +46,16 @@ const APP_CONFIG = {
   bizhawkPath: path.join(app.getPath('userData'), 'bizhawk') // Directory for BizHawk installation
 };
 
+// Discord webhook configuration
+const DISCORD_WEBHOOK_URL = 'https://discord.com/api/webhooks/1419125129111277578/Zm-DL3Vl1UPdEtU4SEY9yJwPez7ysbQWOMEt5Jgy8gVLlO4DdHV1KfQ4KRuM9KWR9DDQ';
+
 let mainWindow;
 let emuProcess = null;
 let isAuthenticated = false;
 let userInfo = null;
 let challengesData = null;
 let authTokens = null;
+
 
 // Download and install BizHawk
 async function downloadBizHawk() {
@@ -252,6 +256,34 @@ async function forceDownloadBizHawk() {
   } catch (error) {
     console.error('Error force downloading BizHawk:', error);
     return { success: false, error: error.message };
+
+// Send Discord webhook notification
+async function sendWebhookNotification(message, title = 'RetroChallenges App') {
+  try {
+    const webhookData = {
+      username: 'RetroChallenges Bot',
+      avatar_url: 'https://retrochallenges.com/assets/icon.png',
+      embeds: [{
+        title: title,
+        description: message,
+        color: 0x00ff00, // Green color
+        timestamp: new Date().toISOString(),
+        footer: {
+          text: 'RetroChallenges Desktop App'
+        }
+      }]
+    };
+
+    await axios.post(DISCORD_WEBHOOK_URL, webhookData, {
+      headers: {
+        'Content-Type': 'application/json'
+      }
+    });
+    
+    console.log('Webhook notification sent successfully');
+  } catch (error) {
+    console.error('Error sending webhook notification:', error.message);
+    // Don't throw error - webhook failures shouldn't break the app
   }
 }
 
@@ -1069,6 +1101,9 @@ app.whenReady().then(async () => {
   loadAppConfig(); // Load saved configuration
   registerIpcHandlers();
   ensureRomsDirectory();
+  
+  // Send webhook notification that app was launched
+  await sendWebhookNotification('🚀 RetroChallenges desktop app has been launched!', 'App Launched');
   
   // Try to load existing authentication
   const authData = await loadAuthData();
