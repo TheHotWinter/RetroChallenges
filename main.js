@@ -477,21 +477,68 @@ async function sendBizHawkCommand(commandData) {
   try {
     const { command, params, timestamp } = commandData;
     
-    console.log(`Sending BizHawk command: ${command}`, params);
+    console.log('=== BIZHAWK COMMAND DEBUG ===');
+    console.log('Command data received:', commandData);
+    console.log('Command:', command);
+    console.log('Params:', params);
+    console.log('Timestamp:', timestamp);
     
-    // Create command file for Lua script to read
-    const commandFile = path.join(APP_CONFIG.challengesPath, 'commands.json');
-    const commandQueue = {
-      commands: [{
-        id: `cmd_${Date.now()}`,
-        action: command,
-        params: params || {},
-        timestamp: timestamp || new Date().toISOString()
-      }]
-    };
+    // Create simple command file for Lua script to read (same directory as Lua script)
+    const commandFile = path.join(APP_CONFIG.challengesPath, 'twitch_commands.txt');
+    console.log('Command file path:', commandFile);
+    console.log('Challenges path exists:', fs.existsSync(APP_CONFIG.challengesPath));
     
-    // Write command to file
-    fs.writeFileSync(commandFile, JSON.stringify(commandQueue, null, 2));
+    // Create simple, readable command format
+    let commandLine = `COMMAND:${command}`;
+    
+    // Add parameters if they exist
+    if (params && Object.keys(params).length > 0) {
+      const paramString = Object.entries(params)
+        .map(([key, value]) => `${key}=${value}`)
+        .join(',');
+      commandLine += `|PARAMS:${paramString}`;
+    }
+    
+    // Add timestamp
+    commandLine += `|TIME:${timestamp || new Date().toISOString()}`;
+    
+    console.log('Command line to write:', commandLine);
+    
+    // Ensure challenges directory exists
+    if (!fs.existsSync(APP_CONFIG.challengesPath)) {
+      console.log('Creating challenges directory:', APP_CONFIG.challengesPath);
+      fs.mkdirSync(APP_CONFIG.challengesPath, { recursive: true });
+    }
+    
+    // Create blank command file if it doesn't exist
+    if (!fs.existsSync(commandFile)) {
+      console.log('Creating blank command file:', commandFile);
+      fs.writeFileSync(commandFile, '');
+    }
+    
+    // Write command to file (append mode with proper line ending)
+    try {
+      fs.appendFileSync(commandFile, commandLine + '\n', 'utf8');
+      console.log('Command written to file successfully');
+    } catch (writeError) {
+      console.error('Error writing to file:', writeError);
+      // Try to create a new file if append fails
+      try {
+        fs.writeFileSync(commandFile, commandLine + '\n', 'utf8');
+        console.log('Command written to new file successfully');
+      } catch (createError) {
+        console.error('Error creating new file:', createError);
+        throw createError;
+      }
+    }
+    
+    // Verify file was written
+    if (fs.existsSync(commandFile)) {
+      const fileContent = fs.readFileSync(commandFile, 'utf8');
+      console.log('File content after write:', fileContent);
+    } else {
+      console.error('File was not created!');
+    }
     
     // Send webhook notification for command
     await sendWebhookNotification(
@@ -504,6 +551,7 @@ async function sendBizHawkCommand(commandData) {
     
   } catch (error) {
     console.error('BizHawk command error:', error);
+    console.error('Error stack:', error.stack);
     return { success: false, error: error.message };
   }
 }

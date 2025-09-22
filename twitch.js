@@ -226,6 +226,13 @@ class TwitchIntegration {
         const cmd = parts[0];
         const args = parts.slice(1);
 
+        console.log('=== TWITCH COMMAND DEBUG ===');
+        console.log('Username:', username);
+        console.log('Content:', content);
+        console.log('Command:', cmd);
+        console.log('Args:', args);
+        console.log('Tags:', tags);
+
         this.logEvent(`Command from ${username}: ${command}`, 'info');
 
         switch (cmd) {
@@ -250,6 +257,12 @@ class TwitchIntegration {
                 if (args[0] === 'start') {
                     this.sendBizHawkCommand('start_challenge');
                 }
+                break;
+                
+            case '!helloworld':
+                console.log('=== SENDING HELLOWORLD COMMAND ===');
+                console.log('Username for command:', username);
+                this.sendBizHawkCommand('helloworld', { username: username });
                 break;
                 
             default:

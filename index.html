@@ -698,6 +698,14 @@
                                 </div>
                             </div>
                             
+                            <!-- Debug Test Button -->
+                            <div class="mt-4">
+                                <button id="test-command" class="w-full px-4 py-2 bg-yellow-600 text-white text-sm font-medium rounded-md hover:bg-yellow-700 focus:outline-none focus:ring-2 focus:ring-yellow-500">
+                                    <i data-feather="bug" class="h-4 w-4 mr-2 inline"></i>
+                                    Test !helloworld Command
+                                </button>
+                            </div>
+                            
                             <!-- Disconnect Button -->
                             <div class="mt-4">
                                 <button id="disconnect-twitch" class="w-full px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 hidden">
@@ -715,6 +723,9 @@
                             Quick Commands
                         </h3>
                         <div class="mt-4 space-y-2">
+                            <div class="text-sm text-gray-300">
+                                <code class="bg-slate-700 px-2 py-1 rounded">!helloworld</code> - Say hello (test command)
+                            </div>
                             <div class="text-sm text-gray-300">
                                 <code class="bg-slate-700 px-2 py-1 rounded">!pause</code> - Pause game
                             </div>
@@ -1369,6 +1380,27 @@
             } catch (error) {
                 console.error('Error signing in:', error);
                 showNotification('Error signing in: ' + error.message, 'error');
+            }
+        });
+        
+        // Test command button handler
+        document.getElementById('test-command')?.addEventListener('click', async () => {
+            console.log('=== MANUAL TEST COMMAND ===');
+            try {
+                const result = await ipcRenderer.invoke('bizhawk-command', {
+                    command: 'helloworld',
+                    params: { username: 'TestUser' },
+                    timestamp: new Date().toISOString()
+                });
+                console.log('Test command result:', result);
+                if (window.twitchIntegration) {
+                    window.twitchIntegration.logEvent('Test command sent: ' + (result.success ? 'Success' : 'Failed'), result.success ? 'success' : 'error');
+                }
+            } catch (error) {
+                console.error('Test command error:', error);
+                if (window.twitchIntegration) {
+                    window.twitchIntegration.logEvent('Test command error: ' + error.message, 'error');
+                }
             }
         });
     </script>
