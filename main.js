@@ -457,7 +457,7 @@ async function authenticateWithGoogle() {
             const user = await authWindow.webContents.executeJavaScript('window.USER');
 
             // Close the auth window
-            authWindow.close();
+            // authWindow.close(); // Commented out for debugging
 
             // Persist minimal auth data locally (no tokens are stored client-side)
             isAuthenticated = true;
