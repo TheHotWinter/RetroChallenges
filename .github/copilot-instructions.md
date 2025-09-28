@@ -11,6 +11,7 @@ High-value files to read first
 - `config.json` / `config.example.json` — runtime configuration. Secrets must not be committed.
 - `package.json` — scripts: `npm start` (dev), `npm run dist` (packaging via electron-builder).
 - `scripts/*.lua` — example challenge scripts that write `challenge_data.json` consumed by `main.js`.
+- `server/db_schema/schema.dbml` — database schema definition.
 
 Key architecture notes (why things are arranged this way)
 - main process handles system concerns (file I/O, launching EmuHawk, IPC handlers). Renderer only manipulates UI and invokes IPC.

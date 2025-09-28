@@ -1,0 +1,29 @@
+// Use DBML to define your database structure
+// Docs: https://dbml.dbdiagram.io/docs
+
+Table users {
+  id integer pk [not null, increment]
+  oauth_id integer [not null]
+  rc_userid varchar(12)
+  oauth_source varchar(15) [not null]
+}
+
+Table challenges {
+  id integer unique [not null, increment]
+  system varchar(8) [not null]
+  game varchar(20) pk [not null]
+  challenge varchar(32) pk [not null]
+  rc_score integer
+}
+
+Table results {
+  id integer pk [not null, increment]
+  user_id integer [not null]
+  challenge_id integer [not null]
+  score float
+  time varchar(15)
+  earns_points bool
+}
+
+Ref: results.user_id > users.id
+Ref: results.challenge_id > challenges.id

@@ -57,6 +57,8 @@ if ($response === false) {
 $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
 $tokenData = json_decode($response, true);
 
+// Log token exchange response for debugging (do not expose client_secret)
+// error_log('Token exchange HTTP ' . $httpCode . ' response: ' . $response); // Commented out for security
 
 if ($httpCode !== 200 || !$tokenData || !isset($tokenData['access_token'])) {
   // Try to provide a helpful error to the developer in server logs
@@ -111,7 +113,7 @@ try {
     if ($row) {
       // Attach rc_userid to session payload (may be NULL)
       $_SESSION['user']['rc_userid'] = isset($row['rc_userid']) ? $row['rc_userid'] : null;
-      error_log('User exists, oauth_id: ' . $user['id'] . ' rc_userid: ' . ($_SESSION['user']['rc_userid'] ?? 'NULL'));
+      // error_log('User exists, oauth_id: ' . $user['id'] . ' rc_userid: ' . ($_SESSION['user']['rc_userid'] ?? 'NULL')); // Commented out for security
     } else {
       // Insert new user with NULL rc_userid
       $insert = $pdo->prepare('INSERT INTO users (oauth_id, oauth_source, rc_userid) VALUES (:oauth_id, :source, NULL)');
@@ -119,7 +121,7 @@ try {
       $insert->bindValue(':source', 'google', PDO::PARAM_STR);
       $insert->execute();
       $_SESSION['user']['rc_userid'] = null;
-      error_log('Provisioned new user with oauth_id: ' . $user['id']);
+      // error_log('Provisioned new user with oauth_id: ' . $user['id']); // Commented out for security
       if (strlen((string)$user['id']) > 20) {
         error_log('Warning: oauth_id length is ' . strlen((string)$user['id']) . ". Ensure `users.oauth_id` is VARCHAR(64) not INT/BIGINT.");
       }
