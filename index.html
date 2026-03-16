@@ -792,8 +792,8 @@
                     const result = await window.api.invoke('force-download-bizhawk');
                     if (result.success) {
                         loadEmuhawkPath();
-                        if (result.needsMono) {
-                            showMonoInstallPrompt();
+                        if (result.missingDeps && result.missingDeps.length > 0) {
+                            showDepsInstallPrompt(result.missingDeps);
                         } else {
                             showNotification('BizHawk reinstalled successfully!', 'success');
                         }
@@ -807,28 +807,38 @@
             });
         }
 
-        // Show Mono install prompt
-        function showMonoInstallPrompt() {
+        // Show dependency install prompt for macOS (Mono, XQuartz, SDL2)
+        function showDepsInstallPrompt(missing) {
+            if (!missing || missing.length === 0) return;
+
+            const depNames = {
+                mono: { name: 'Mono Framework', desc: 'Required to run the BizHawk emulator', channel: 'install-mono' },
+                xquartz: { name: 'XQuartz (X11)', desc: 'Required for BizHawk\'s display system', channel: 'install-xquartz' },
+                sdl2: { name: 'SDL2 Library', desc: 'Required for BizHawk\'s graphics and input', channel: 'install-sdl2' }
+            };
+
+            const depItems = missing.map(d => depNames[d]).filter(Boolean);
+            const depList = depItems.map(d => `<li class="flex items-center"><i data-feather="package" class="h-4 w-4 mr-2 text-yellow-500 flex-shrink-0"></i><div><strong>${d.name}</strong><br><span class="text-xs text-gray-400">${d.desc}</span></div></li>`).join('');
+
             const popup = document.createElement('div');
             popup.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50';
             popup.innerHTML = `
                 <div class="bg-slate-800 rounded-lg shadow-xl p-6 max-w-md mx-4 border border-slate-700">
                     <div class="flex items-center mb-4">
                         <i data-feather="download" class="h-6 w-6 text-blue-500 mr-3"></i>
-                        <h3 class="text-lg font-medium text-white">One More Step!</h3>
+                        <h3 class="text-lg font-medium text-white">Additional Setup Needed</h3>
                     </div>
                     <div class="space-y-3 text-sm text-gray-300">
-                        <p>BizHawk was installed successfully! It needs one extra component to run on your Mac: the <strong>Mono framework</strong>.</p>
-                        <p>Click the button below and we'll open the installer for you — just follow the steps like any other app install.</p>
-                        <p class="text-xs text-gray-400">After installing, restart RetroChallenges and you're good to go!</p>
+                        <p>BizHawk needs a few extra components to run on your Mac. We'll install them for you one at a time.</p>
+                        <ul class="space-y-2 mt-2">${depList}</ul>
+                        <p class="text-xs text-gray-400 mt-3">Each will open a standard Mac installer — just follow the steps. Restart the app when done.</p>
                     </div>
-                    <div class="mt-6 flex space-x-3">
-                        <button id="skipMonoInstall" class="flex-1 px-4 py-2 border border-gray-600 text-sm font-medium rounded-md text-gray-300 bg-slate-700 hover:bg-slate-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500">
+                    <div id="depsActions" class="mt-6 flex space-x-3">
+                        <button id="skipDepsInstall" class="flex-1 px-4 py-2 border border-gray-600 text-sm font-medium rounded-md text-gray-300 bg-slate-700 hover:bg-slate-600 focus:outline-none">
                             Later
                         </button>
-                        <button id="installMonoBtn" class="flex-1 px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500">
-                            <i data-feather="download" class="h-4 w-4 mr-1 inline"></i>
-                            Install Mono
+                        <button id="installDepsBtn" class="flex-1 px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-green-600 hover:bg-green-700 focus:outline-none">
+                            Install All
                         </button>
                     </div>
                 </div>
@@ -837,53 +847,51 @@
             document.body.appendChild(popup);
             feather.replace();
 
-            document.getElementById('skipMonoInstall').addEventListener('click', () => {
-                popup.remove();
-            });
+            document.getElementById('skipDepsInstall').addEventListener('click', () => popup.remove());
 
-            document.getElementById('installMonoBtn').addEventListener('click', async () => {
-                const btn = document.getElementById('installMonoBtn');
-                btn.disabled = true;
-                btn.textContent = 'Downloading...';
-
-                // Replace buttons with progress bar
-                const buttonsDiv = btn.parentElement;
-                buttonsDiv.innerHTML = `
+            document.getElementById('installDepsBtn').addEventListener('click', async () => {
+                const actionsDiv = document.getElementById('depsActions');
+                actionsDiv.innerHTML = `
                     <div class="w-full">
                         <div class="w-full bg-slate-700 rounded-full h-3 overflow-hidden">
-                            <div id="monoProgressBar" class="bg-green-500 h-3 rounded-full transition-all duration-300" style="width: 0%"></div>
+                            <div id="depsProgressBar" class="bg-green-500 h-3 rounded-full transition-all duration-300" style="width: 0%"></div>
                         </div>
-                        <p id="monoProgressText" class="text-xs text-gray-400 mt-1 text-center">Starting download...</p>
+                        <p id="depsProgressText" class="text-xs text-gray-400 mt-1 text-center">Starting...</p>
                     </div>
                 `;
 
-                // Listen for progress updates
                 const removeListener = window.api.on('download-progress', (data) => {
-                    if (data.type === 'mono') {
-                        const bar = document.getElementById('monoProgressBar');
-                        const text = document.getElementById('monoProgressText');
+                    if (data.type === 'deps') {
+                        const bar = document.getElementById('depsProgressBar');
+                        const text = document.getElementById('depsProgressText');
                         if (bar && text) {
                             bar.style.width = `${data.percent}%`;
                             const loadedMB = (data.loaded / 1024 / 1024).toFixed(1);
                             const totalMB = (data.total / 1024 / 1024).toFixed(1);
-                            text.textContent = `Downloading Mono... ${loadedMB} / ${totalMB} MB (${data.percent}%)`;
+                            text.textContent = `Downloading... ${loadedMB} / ${totalMB} MB (${data.percent}%)`;
                         }
                     }
                 });
 
                 try {
-                    const result = await window.api.invoke('install-mono');
+                    for (const dep of depItems) {
+                        const text = document.getElementById('depsProgressText');
+                        if (text) text.textContent = `Installing ${dep.name}...`;
+                        const bar = document.getElementById('depsProgressBar');
+                        if (bar) bar.style.width = '0%';
+
+                        const result = await window.api.invoke(dep.channel);
+                        if (!result.success) {
+                            showNotification(`Failed to install ${dep.name}: ${result.error}`, 'error');
+                        }
+                    }
                     removeListener();
                     popup.remove();
-                    if (result.success) {
-                        showNotification('Mono installer opened — follow the steps to complete, then restart the app.', 'success');
-                    } else {
-                        showNotification('Failed to download Mono: ' + result.error, 'error');
-                    }
+                    showNotification('Installers opened — follow the steps for each, then restart the app.', 'success');
                 } catch (error) {
                     removeListener();
                     popup.remove();
-                    showNotification('Failed to download Mono: ' + error.message, 'error');
+                    showNotification('Installation failed: ' + error.message, 'error');
                 }
             });
         }
@@ -1123,8 +1131,8 @@
                     const result = await window.api.invoke('download-bizhawk');
                     if (result.success) {
                         loadEmuhawkPath();
-                        if (result.needsMono) {
-                            showMonoInstallPrompt();
+                        if (result.missingDeps && result.missingDeps.length > 0) {
+                            showDepsInstallPrompt(result.missingDeps);
                         } else {
                             showNotification('BizHawk downloaded and installed successfully!', 'success');
                         }
@@ -1345,9 +1353,9 @@
                 const result = await window.api.invoke('launch-challenge', selectedGame, selectedChallenge);
                 if (result && result.success) {
                     document.getElementById('statusMessage').textContent = `Challenge "${selectedChallenge.name}" launched successfully! Waiting for completion...`;
-                } else if (result && result.error === 'mono_missing') {
+                } else if (result && result.error === 'deps_missing') {
                     statusCard.classList.add('hidden');
-                    showMonoInstallPrompt();
+                    showDepsInstallPrompt(result.missing);
                 } else {
                     const errorMsg = (result && result.error) || 'Failed to launch challenge: Unknown error occurred. Please check that EmuHawk is properly configured and try again.';
                     document.getElementById('statusMessage').textContent = errorMsg;

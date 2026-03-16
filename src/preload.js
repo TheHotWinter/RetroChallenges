@@ -17,6 +17,8 @@ const INVOKE_CHANNELS = [
   'get-telemetry',
   'set-telemetry',
   'install-mono',
+  'install-xquartz',
+  'install-sdl2',
   'open-rom-folder'
 ];
 

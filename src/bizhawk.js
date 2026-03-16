@@ -8,9 +8,8 @@ const { sendWebhookNotification } = require('./webhook');
 
 const isWindows = process.platform === 'win32';
 const isMac = process.platform === 'darwin';
-// BizHawk Linux build ships EmuHawk.exe (.NET) + EmuHawkMono.sh launcher
+// BizHawk ships EmuHawk.exe (.NET assembly) on all platforms
 const EMUHAWK_BINARY = 'EmuHawk.exe';
-const EMUHAWK_LAUNCHER = isWindows ? 'EmuHawk.exe' : 'EmuHawkMono.sh';
 
 // Pick the right BizHawk asset for this platform
 function findPlatformAsset(assets) {
@@ -105,8 +104,7 @@ async function downloadAndInstallBizHawk() {
   const bizhawkDir = path.dirname(emuHawkPath);
   fs.cpSync(bizhawkDir, APP_CONFIG.bizhawkPath, { recursive: true });
 
-  // On Windows, launch EmuHawk.exe directly; on Unix, use EmuHawkMono.sh
-  const finalLauncherPath = path.join(APP_CONFIG.bizhawkPath, EMUHAWK_LAUNCHER);
+  const finalLauncherPath = path.join(APP_CONFIG.bizhawkPath, EMUHAWK_BINARY);
   APP_CONFIG.emuhawkPath = finalLauncherPath;
   saveAppConfig(state);
 
@@ -123,6 +121,12 @@ async function downloadAndInstallBizHawk() {
     }
   }
 
+  // On macOS, create SDL2-CS.dll.config for Mono DLL mapping
+  if (isMac) {
+    const dllConfigPath = path.join(APP_CONFIG.bizhawkPath, 'dll', 'SDL2-CS.dll.config');
+    fs.writeFileSync(dllConfigPath, '<configuration>\n  <dllmap dll="SDL2" target="libSDL2.dylib" />\n</configuration>\n');
+  }
+
   // Clean up temporary files
   fs.rmSync(archivePath);
   fs.rmSync(extractPath, { recursive: true, force: true });
@@ -134,12 +138,12 @@ async function downloadBizHawk() {
   try {
     console.log('Starting BizHawk download...');
 
-    const existingBizHawkPath = path.join(APP_CONFIG.bizhawkPath, EMUHAWK_LAUNCHER);
+    const existingBizHawkPath = path.join(APP_CONFIG.bizhawkPath, EMUHAWK_BINARY);
     if (fs.existsSync(existingBizHawkPath)) {
-      // BizHawk exists — check if Mono is needed
-      const needsMono = !isWindows && !checkMonoInstalled();
-      if (needsMono) {
-        return { success: true, message: 'BizHawk is already installed', needsMono: true };
+      // BizHawk exists — check if dependencies are needed
+      const deps = checkMacOSDeps();
+      if (!deps.ok) {
+        return { success: true, message: 'BizHawk is already installed', missingDeps: deps.missing };
       }
       if (state.mainWindow && !state.mainWindow.isDestroyed()) {
         state.mainWindow.webContents.send('show-bizhawk-warning');
@@ -156,8 +160,8 @@ async function downloadBizHawk() {
       true
     );
 
-    const needsMono = !isWindows && !checkMonoInstalled();
-    return { success: true, message: 'BizHawk downloaded and installed successfully!', needsMono };
+    const deps = checkMacOSDeps();
+    return { success: true, message: 'BizHawk downloaded and installed successfully!', missingDeps: deps.missing };
   } catch (error) {
     console.error('Error downloading BizHawk:', error);
     return { success: false, error: error.message };
@@ -177,8 +181,8 @@ async function forceDownloadBizHawk() {
       true
     );
 
-    const needsMono = !isWindows && !checkMonoInstalled();
-    return { success: true, message: 'BizHawk downloaded and installed successfully!', needsMono };
+    const deps = checkMacOSDeps();
+    return { success: true, message: 'BizHawk downloaded and installed successfully!', missingDeps: deps.missing };
   } catch (error) {
     console.error('Error force downloading BizHawk:', error);
     return { success: false, error: error.message };
@@ -201,22 +205,21 @@ function findEmuHawkPath() {
     );
   } else if (isMac) {
     commonPaths.push(
-      '/Applications/BizHawk/EmuHawkMono.sh',
-      path.join(home, 'Applications', 'BizHawk', 'EmuHawkMono.sh'),
-      path.join(home, 'Desktop', 'BizHawk', 'EmuHawkMono.sh'),
-      path.join(home, 'Downloads', 'BizHawk', 'EmuHawkMono.sh')
+      '/Applications/BizHawk/EmuHawk.exe',
+      path.join(home, 'Applications', 'BizHawk', 'EmuHawk.exe'),
+      path.join(home, 'Desktop', 'BizHawk', 'EmuHawk.exe'),
+      path.join(home, 'Downloads', 'BizHawk', 'EmuHawk.exe')
     );
   } else {
     commonPaths.push(
-      '/usr/local/bin/EmuHawkMono.sh',
-      path.join(home, 'BizHawk', 'EmuHawkMono.sh'),
-      path.join(home, 'Desktop', 'BizHawk', 'EmuHawkMono.sh'),
-      path.join(home, 'Downloads', 'BizHawk', 'EmuHawkMono.sh')
+      path.join(home, 'BizHawk', 'EmuHawk.exe'),
+      path.join(home, 'Desktop', 'BizHawk', 'EmuHawk.exe'),
+      path.join(home, 'Downloads', 'BizHawk', 'EmuHawk.exe')
     );
   }
 
   // Always check the app's own install location
-  commonPaths.push(path.join(APP_CONFIG.bizhawkPath, EMUHAWK_LAUNCHER));
+  commonPaths.push(path.join(APP_CONFIG.bizhawkPath, EMUHAWK_BINARY));
 
   for (const emuPath of commonPaths) {
     if (fs.existsSync(emuPath)) {
@@ -227,6 +230,11 @@ function findEmuHawkPath() {
 
   return null;
 }
+
+// SDL2 universal binary URL (x86_64 + arm64)
+const SDL2_DMG_URL = 'https://github.com/libsdl-org/SDL/releases/download/release-2.30.9/SDL2-2.30.9.dmg';
+// XQuartz (X11 for macOS)
+const XQUARTZ_PKG_URL = 'https://github.com/XQuartz/XQuartz/releases/download/XQuartz-2.8.5/XQuartz-2.8.5.pkg';
 
 // Common Mono install locations on macOS
 const MONO_PATHS = [
@@ -245,6 +253,24 @@ function checkMonoInstalled() {
     // Check common install locations
     return MONO_PATHS.some(p => fs.existsSync(p));
   }
+}
+
+// Check if XQuartz (X11) is installed on macOS
+function checkXQuartzInstalled() {
+  if (!isMac) return true;
+  return fs.existsSync('/opt/X11/bin/Xquartz') || fs.existsSync('/opt/X11/bin/xquartz');
+}
+
+// Check all macOS dependencies and return what's missing
+function checkMacOSDeps() {
+  if (isWindows) return { ok: true, missing: [] };
+  const missing = [];
+  if (!checkMonoInstalled()) missing.push('mono');
+  if (isMac && !checkXQuartzInstalled()) missing.push('xquartz');
+  // Check if SDL2 dylib exists in BizHawk dll folder
+  const sdl2Path = path.join(APP_CONFIG.bizhawkPath, 'dll', 'libSDL2.dylib');
+  if (isMac && !fs.existsSync(sdl2Path)) missing.push('sdl2');
+  return { ok: missing.length === 0, missing };
 }
 
 // Get the path to mono binary
@@ -268,9 +294,10 @@ function launchEmuHawk(romPath, luaScriptPath) {
     return { success: false, error: 'not_found' };
   }
 
-  if (!isWindows && !checkMonoInstalled()) {
-    console.error('Mono runtime not found — required to run BizHawk on macOS/Linux');
-    return { success: false, error: 'mono_missing' };
+  const deps = checkMacOSDeps();
+  if (!deps.ok) {
+    console.error('Missing dependencies:', deps.missing.join(', '));
+    return { success: false, error: 'deps_missing', missing: deps.missing };
   }
 
   if (!romPath || !fs.existsSync(romPath)) {
@@ -296,21 +323,40 @@ function launchEmuHawk(romPath, luaScriptPath) {
     const args = [romPath, '--lua', luaScriptPath];
     console.log('Launching EmuHawk with:', APP_CONFIG.emuhawkPath, args);
 
-    // Ensure Mono is on PATH for the EmuHawk launcher script
-    const env = { ...process.env };
-    if (!isWindows) {
-      const monoPath = getMonoPath();
-      if (monoPath) {
-        const monoDir = path.dirname(monoPath);
-        env.PATH = `${monoDir}:${env.PATH || ''}`;
-      }
-    }
-
-    state.emuProcess = spawn(APP_CONFIG.emuhawkPath, args, {
+    let executable, spawnArgs;
+    const spawnOpts = {
       detached: true,
       stdio: ['ignore', 'pipe', 'pipe'],
-      env
-    });
+      cwd: path.dirname(APP_CONFIG.emuhawkPath)
+    };
+
+    if (isWindows) {
+      executable = APP_CONFIG.emuhawkPath;
+      spawnArgs = args;
+    } else {
+      // On macOS/Linux, run: mono EmuHawk.exe <args>
+      executable = getMonoPath();
+      spawnArgs = [APP_CONFIG.emuhawkPath, ...args];
+      // Set Mono environment with library paths for native dependencies (SDL2 etc.)
+      const bizhawkDir = path.dirname(APP_CONFIG.emuhawkPath);
+      const libPaths = [
+        path.join(bizhawkDir, 'dll'),
+        bizhawkDir,
+        '/opt/homebrew/lib',
+        '/usr/local/lib',
+        '/usr/lib'
+      ].join(':');
+      spawnOpts.env = {
+        ...process.env,
+        PATH: `${path.dirname(executable)}:${process.env.PATH || ''}`,
+        DYLD_LIBRARY_PATH: libPaths,
+        LD_LIBRARY_PATH: libPaths,
+        MONO_CRASH_NOFILE: '1',
+        DISPLAY: process.env.DISPLAY || ':0'
+      };
+    }
+
+    state.emuProcess = spawn(executable, spawnArgs, spawnOpts);
 
     state.emuProcess.on('error', (error) => {
       console.error('EmuHawk spawn error:', error);

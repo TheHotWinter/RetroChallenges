@@ -80,7 +80,15 @@ function registerIpcHandlers() {
         ? path.basename(gameData.rom.replace(/\\/g, '/'))
         : `${gameData.name.toLowerCase().replace(/\s+/g, '_')}.nes`;
 
-      const romPath = path.join(APP_CONFIG.romsPath, romFileName);
+      // Try exact match first, then case-insensitive match
+      let romPath = path.join(APP_CONFIG.romsPath, romFileName);
+      if (!fs.existsSync(romPath)) {
+        try {
+          const romFiles = fs.readdirSync(APP_CONFIG.romsPath);
+          const match = romFiles.find(f => f.toLowerCase() === romFileName.toLowerCase());
+          if (match) romPath = path.join(APP_CONFIG.romsPath, match);
+        } catch (e) { /* ignore */ }
+      }
       if (!fs.existsSync(romPath)) {
         return {
           success: false,
@@ -118,8 +126,8 @@ function registerIpcHandlers() {
         return { success: true };
       } else {
         const reason = launched && launched.error;
-        if (reason === 'mono_missing') {
-          return { success: false, error: 'mono_missing' };
+        if (reason === 'deps_missing') {
+          return { success: false, error: 'deps_missing', missing: launched.missing };
         } else if (reason === 'not_configured') {
           return { success: false, error: 'Failed to launch challenge: EmuHawk path not configured. Please click the auto-detect button or use Browse to select EmuHawk manually.' };
         } else if (reason === 'not_found') {
@@ -182,7 +190,7 @@ function registerIpcHandlers() {
       const pkgPath = path.join(APP_CONFIG.userDataPath, 'MonoFramework.pkg');
 
       if (state.mainWindow && !state.mainWindow.isDestroyed()) {
-        state.mainWindow.webContents.send('download-progress', { type: 'mono', percent: 0, loaded: 0, total: 1 });
+        state.mainWindow.webContents.send('download-progress', { type: 'deps', percent: 0, loaded: 0, total: 1 });
       }
 
       const response = await httpClient.get(monoUrl, {
@@ -191,7 +199,7 @@ function registerIpcHandlers() {
           if (state.mainWindow && !state.mainWindow.isDestroyed() && progressEvent.total) {
             const percent = Math.round((progressEvent.loaded / progressEvent.total) * 100);
             state.mainWindow.webContents.send('download-progress', {
-              type: 'mono',
+              type: 'deps',
               loaded: progressEvent.loaded,
               total: progressEvent.total,
               percent
@@ -201,14 +209,96 @@ function registerIpcHandlers() {
       });
 
       fs.writeFileSync(pkgPath, response.data);
-
-      // Open the .pkg installer — macOS will show the standard install wizard
       const { exec } = require('child_process');
       exec(`open "${pkgPath}"`);
 
-      return { success: true, message: 'Mono installer opened. Follow the steps to complete installation, then restart the app.' };
+      return { success: true, message: 'Mono installer opened.' };
     } catch (error) {
       console.error('Error installing Mono:', error);
+      return { success: false, error: error.message };
+    }
+  });
+
+  ipcMain.handle('install-xquartz', async () => {
+    if (process.platform !== 'darwin') {
+      return { success: false, error: 'XQuartz is only needed on macOS' };
+    }
+    try {
+      const { httpClient } = require('./http');
+      const pkgPath = path.join(APP_CONFIG.userDataPath, 'XQuartz.pkg');
+
+      if (state.mainWindow && !state.mainWindow.isDestroyed()) {
+        state.mainWindow.webContents.send('download-progress', { type: 'deps', percent: 0, loaded: 0, total: 1 });
+      }
+
+      const response = await httpClient.get('https://github.com/XQuartz/XQuartz/releases/download/XQuartz-2.8.5/XQuartz-2.8.5.pkg', {
+        responseType: 'arraybuffer',
+        onDownloadProgress: (progressEvent) => {
+          if (state.mainWindow && !state.mainWindow.isDestroyed() && progressEvent.total) {
+            const percent = Math.round((progressEvent.loaded / progressEvent.total) * 100);
+            state.mainWindow.webContents.send('download-progress', {
+              type: 'deps',
+              loaded: progressEvent.loaded,
+              total: progressEvent.total,
+              percent
+            });
+          }
+        }
+      });
+
+      fs.writeFileSync(pkgPath, response.data);
+      const { exec } = require('child_process');
+      exec(`open "${pkgPath}"`);
+
+      return { success: true, message: 'XQuartz installer opened.' };
+    } catch (error) {
+      console.error('Error installing XQuartz:', error);
+      return { success: false, error: error.message };
+    }
+  });
+
+  ipcMain.handle('install-sdl2', async () => {
+    if (process.platform !== 'darwin') {
+      return { success: false, error: 'SDL2 patching is only needed on macOS' };
+    }
+    try {
+      const { httpClient } = require('./http');
+      const dmgPath = path.join(APP_CONFIG.userDataPath, 'SDL2.dmg');
+
+      if (state.mainWindow && !state.mainWindow.isDestroyed()) {
+        state.mainWindow.webContents.send('download-progress', { type: 'deps', percent: 0, loaded: 0, total: 1 });
+      }
+
+      const response = await httpClient.get('https://github.com/libsdl-org/SDL/releases/download/release-2.30.9/SDL2-2.30.9.dmg', {
+        responseType: 'arraybuffer',
+        onDownloadProgress: (progressEvent) => {
+          if (state.mainWindow && !state.mainWindow.isDestroyed() && progressEvent.total) {
+            const percent = Math.round((progressEvent.loaded / progressEvent.total) * 100);
+            state.mainWindow.webContents.send('download-progress', {
+              type: 'deps',
+              loaded: progressEvent.loaded,
+              total: progressEvent.total,
+              percent
+            });
+          }
+        }
+      });
+
+      fs.writeFileSync(dmgPath, response.data);
+
+      // Mount DMG, copy SDL2 framework, unmount
+      const { execSync } = require('child_process');
+      execSync(`hdiutil attach "${dmgPath}" -nobrowse -quiet`);
+      const sdl2Dest = path.join(APP_CONFIG.bizhawkPath, 'dll', 'libSDL2.dylib');
+      // Remove old .so or broken symlink
+      if (fs.existsSync(sdl2Dest)) fs.rmSync(sdl2Dest);
+      fs.copyFileSync('/Volumes/SDL2/SDL2.framework/Versions/A/SDL2', sdl2Dest);
+      execSync('hdiutil detach /Volumes/SDL2 -quiet');
+      fs.rmSync(dmgPath);
+
+      return { success: true, message: 'SDL2 installed.' };
+    } catch (error) {
+      console.error('Error installing SDL2:', error);
       return { success: false, error: error.message };
     }
   });
