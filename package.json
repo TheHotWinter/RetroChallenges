@@ -1,5 +1,6 @@
 {
   "name": "retrochallenges",
+  "productName": "RetroChallenges",
   "version": "1.0.0",
   "description": "RetroChallenges Electron App",
   "main": "main.js",
