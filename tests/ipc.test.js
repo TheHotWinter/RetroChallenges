@@ -107,7 +107,7 @@ describe('launch-challenge', () => {
 
   test('returns error when EmuHawk not configured', async () => {
     jest.spyOn(fs, 'existsSync').mockReturnValue(true);
-    launchEmuHawk.mockReturnValue(false);
+    launchEmuHawk.mockReturnValue({ success: false, error: 'not_configured' });
     APP_CONFIG.emuhawkPath = '';
 
     const result = await handlers['launch-challenge']({}, gameData, challengeData);

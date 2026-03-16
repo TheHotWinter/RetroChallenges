@@ -108,7 +108,7 @@ function registerIpcHandlers() {
       console.log('Both ROM and Lua script found, launching EmuHawk...');
       const launched = launchEmuHawk(romPath, luaPath);
 
-      if (launched) {
+      if (launched === true) {
         console.log('EmuHawk launched successfully');
         await sendWebhookNotification(
           `Challenge launched: **${challengeData.name}** in **${gameData.name}**`,
@@ -117,9 +117,15 @@ function registerIpcHandlers() {
         );
         return { success: true };
       } else {
-        if (!APP_CONFIG.emuhawkPath) {
+        const reason = launched && launched.error;
+        if (reason === 'mono_missing') {
+          const installCmd = process.platform === 'darwin'
+            ? 'brew install mono'
+            : 'sudo apt install mono-complete';
+          return { success: false, error: `BizHawk requires the Mono runtime to run on ${process.platform === 'darwin' ? 'macOS' : 'Linux'}.\n\nInstall it by running:\n${installCmd}\n\nThen restart the app and try again.` };
+        } else if (reason === 'not_configured') {
           return { success: false, error: 'Failed to launch challenge: EmuHawk path not configured. Please click the auto-detect button or use Browse to select EmuHawk manually.' };
-        } else if (!fs.existsSync(APP_CONFIG.emuhawkPath)) {
+        } else if (reason === 'not_found') {
           return { success: false, error: `Failed to launch challenge: EmuHawk not found at: ${APP_CONFIG.emuhawkPath}\n\nPlease check the path and try again, or use the auto-detect button.` };
         } else {
           return { success: false, error: 'Failed to launch challenge: Could not start EmuHawk. Please check that EmuHawk is properly installed and try again.' };

@@ -127,7 +127,7 @@ async function downloadAndInstallBizHawk() {
   fs.rmSync(archivePath);
   fs.rmSync(extractPath, { recursive: true, force: true });
 
-  return finalEmuHawkPath;
+  return finalLauncherPath;
 }
 
 async function downloadBizHawk() {
@@ -221,25 +221,41 @@ function findEmuHawkPath() {
   return null;
 }
 
+// Check if Mono is available (required on macOS/Linux)
+function checkMonoInstalled() {
+  if (isWindows) return true;
+  try {
+    execSync('which mono', { stdio: 'ignore' });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 function launchEmuHawk(romPath, luaScriptPath) {
   if (!APP_CONFIG.emuhawkPath) {
     console.error('EmuHawk path not configured');
-    return false;
+    return { success: false, error: 'not_configured' };
   }
 
   if (!fs.existsSync(APP_CONFIG.emuhawkPath)) {
     console.error(`EmuHawk not found at: ${APP_CONFIG.emuhawkPath}`);
-    return false;
+    return { success: false, error: 'not_found' };
+  }
+
+  if (!isWindows && !checkMonoInstalled()) {
+    console.error('Mono runtime not found — required to run BizHawk on macOS/Linux');
+    return { success: false, error: 'mono_missing' };
   }
 
   if (!romPath || !fs.existsSync(romPath)) {
     console.error(`ROM file not found: ${romPath}`);
-    return false;
+    return { success: false, error: 'rom_missing' };
   }
 
   if (!luaScriptPath || !fs.existsSync(luaScriptPath)) {
     console.error(`Lua script not found: ${luaScriptPath}`);
-    return false;
+    return { success: false, error: 'lua_missing' };
   }
 
   if (state.emuProcess) {
