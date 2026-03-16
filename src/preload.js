@@ -16,6 +16,7 @@ const INVOKE_CHANNELS = [
   'get-config',
   'get-telemetry',
   'set-telemetry',
+  'install-mono',
   'open-rom-folder'
 ];
 

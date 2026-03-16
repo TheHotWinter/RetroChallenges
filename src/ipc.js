@@ -175,6 +175,47 @@ function registerIpcHandlers() {
     return state.telemetryEnabled;
   });
 
+  ipcMain.handle('install-mono', async () => {
+    if (process.platform !== 'darwin') {
+      return { success: false, error: 'Auto-install is only supported on macOS' };
+    }
+    try {
+      const { httpClient } = require('./http');
+      const monoUrl = 'https://download.mono-project.com/archive/6.12.0/macos-10-universal/MonoFramework-MDK-6.12.0.206.macos10.xamarin.universal.pkg';
+      const pkgPath = path.join(APP_CONFIG.userDataPath, 'MonoFramework.pkg');
+
+      if (state.mainWindow && !state.mainWindow.isDestroyed()) {
+        state.mainWindow.webContents.send('download-progress', { type: 'mono', percent: 0, loaded: 0, total: 1 });
+      }
+
+      const response = await httpClient.get(monoUrl, {
+        responseType: 'arraybuffer',
+        onDownloadProgress: (progressEvent) => {
+          if (state.mainWindow && !state.mainWindow.isDestroyed() && progressEvent.total) {
+            const percent = Math.round((progressEvent.loaded / progressEvent.total) * 100);
+            state.mainWindow.webContents.send('download-progress', {
+              type: 'mono',
+              loaded: progressEvent.loaded,
+              total: progressEvent.total,
+              percent
+            });
+          }
+        }
+      });
+
+      fs.writeFileSync(pkgPath, response.data);
+
+      // Open the .pkg installer — macOS will show the standard install wizard
+      const { exec } = require('child_process');
+      exec(`open "${pkgPath}"`);
+
+      return { success: true, message: 'Mono installer opened. Follow the steps to complete installation, then restart the app.' };
+    } catch (error) {
+      console.error('Error installing Mono:', error);
+      return { success: false, error: error.message };
+    }
+  });
+
   ipcMain.handle('open-rom-folder', async () => {
     try {
       ensureRomsDirectory();
