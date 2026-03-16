@@ -846,8 +846,34 @@
                 btn.disabled = true;
                 btn.textContent = 'Downloading...';
 
+                // Replace buttons with progress bar
+                const buttonsDiv = btn.parentElement;
+                buttonsDiv.innerHTML = `
+                    <div class="w-full">
+                        <div class="w-full bg-slate-700 rounded-full h-3 overflow-hidden">
+                            <div id="monoProgressBar" class="bg-green-500 h-3 rounded-full transition-all duration-300" style="width: 0%"></div>
+                        </div>
+                        <p id="monoProgressText" class="text-xs text-gray-400 mt-1 text-center">Starting download...</p>
+                    </div>
+                `;
+
+                // Listen for progress updates
+                const removeListener = window.api.on('download-progress', (data) => {
+                    if (data.type === 'mono') {
+                        const bar = document.getElementById('monoProgressBar');
+                        const text = document.getElementById('monoProgressText');
+                        if (bar && text) {
+                            bar.style.width = `${data.percent}%`;
+                            const loadedMB = (data.loaded / 1024 / 1024).toFixed(1);
+                            const totalMB = (data.total / 1024 / 1024).toFixed(1);
+                            text.textContent = `Downloading Mono... ${loadedMB} / ${totalMB} MB (${data.percent}%)`;
+                        }
+                    }
+                });
+
                 try {
                     const result = await window.api.invoke('install-mono');
+                    removeListener();
                     popup.remove();
                     if (result.success) {
                         showNotification('Mono installer opened — follow the steps to complete, then restart the app.', 'success');
@@ -855,6 +881,7 @@
                         showNotification('Failed to download Mono: ' + result.error, 'error');
                     }
                 } catch (error) {
+                    removeListener();
                     popup.remove();
                     showNotification('Failed to download Mono: ' + error.message, 'error');
                 }
