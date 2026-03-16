@@ -1,6 +1,6 @@
 const path = require('path');
 const fs = require('fs');
-const { spawn } = require('child_process');
+const { spawn, execSync } = require('child_process');
 const { httpClient } = require('./http');
 const { APP_CONFIG, saveAppConfig } = require('./config');
 const state = require('./state');
@@ -16,8 +16,8 @@ function findPlatformAsset(assets) {
     return assets.find(a => a.name.includes('BizHawk') && a.name.endsWith('.zip') && !a.name.includes('linux'));
   }
   // macOS and Linux both use the linux build (BizHawk runs via .NET/Mono)
-  return assets.find(a => a.name.includes('BizHawk') && a.name.includes('linux') && a.name.endsWith('.zip'))
-    || assets.find(a => a.name.includes('BizHawk') && a.name.endsWith('.zip'));
+  return assets.find(a => a.name.includes('BizHawk') && a.name.includes('linux'))
+    || assets.find(a => a.name.includes('BizHawk'));
 }
 
 // Core download + extract logic shared by downloadBizHawk and forceDownloadBizHawk
@@ -61,13 +61,22 @@ async function downloadAndInstallBizHawk() {
   }
   fs.mkdirSync(APP_CONFIG.bizhawkPath, { recursive: true });
 
-  const zipPath = path.join(APP_CONFIG.userDataPath, 'temp-bizhawk.zip');
-  fs.writeFileSync(zipPath, zipResponse.data);
+  const isTarGz = asset.name.endsWith('.tar.gz');
+  const archiveExt = isTarGz ? '.tar.gz' : '.zip';
+  const archivePath = path.join(APP_CONFIG.userDataPath, `temp-bizhawk${archiveExt}`);
+  fs.writeFileSync(archivePath, zipResponse.data);
 
-  const AdmZip = require('adm-zip');
-  const zip = new AdmZip(zipPath);
   const extractPath = path.join(APP_CONFIG.userDataPath, 'temp-bizhawk-extract');
-  zip.extractAllTo(extractPath, true);
+  fs.mkdirSync(extractPath, { recursive: true });
+
+  if (isTarGz) {
+    // Use system tar to extract .tar.gz
+    execSync(`tar -xzf "${archivePath}" -C "${extractPath}"`);
+  } else {
+    const AdmZip = require('adm-zip');
+    const zip = new AdmZip(archivePath);
+    zip.extractAllTo(extractPath, true);
+  }
 
   // Find EmuHawk executable in the extracted files
   const findEmuHawkBinary = (dir) => {
@@ -108,7 +117,7 @@ async function downloadAndInstallBizHawk() {
   }
 
   // Clean up temporary files
-  fs.rmSync(zipPath);
+  fs.rmSync(archivePath);
   fs.rmSync(extractPath, { recursive: true, force: true });
 
   return finalEmuHawkPath;
