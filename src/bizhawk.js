@@ -8,7 +8,9 @@ const { sendWebhookNotification } = require('./webhook');
 
 const isWindows = process.platform === 'win32';
 const isMac = process.platform === 'darwin';
-const EMUHAWK_EXE = isWindows ? 'EmuHawk.exe' : 'EmuHawk';
+// BizHawk Linux build ships EmuHawk.exe (.NET) + EmuHawkMono.sh launcher
+const EMUHAWK_BINARY = 'EmuHawk.exe';
+const EMUHAWK_LAUNCHER = isWindows ? 'EmuHawk.exe' : 'EmuHawkMono.sh';
 
 // Pick the right BizHawk asset for this platform
 function findPlatformAsset(assets) {
@@ -78,7 +80,7 @@ async function downloadAndInstallBizHawk() {
     zip.extractAllTo(extractPath, true);
   }
 
-  // Find EmuHawk executable in the extracted files
+  // Find EmuHawk.exe in the extracted files (always named .exe, even on Linux)
   const findEmuHawkBinary = (dir) => {
     const files = fs.readdirSync(dir);
     for (const file of files) {
@@ -87,7 +89,7 @@ async function downloadAndInstallBizHawk() {
       if (stat.isDirectory()) {
         const found = findEmuHawkBinary(filePath);
         if (found) return found;
-      } else if (file === EMUHAWK_EXE) {
+      } else if (file === EMUHAWK_BINARY) {
         return filePath;
       }
     }
@@ -96,23 +98,28 @@ async function downloadAndInstallBizHawk() {
 
   const emuHawkPath = findEmuHawkBinary(extractPath);
   if (!emuHawkPath) {
-    throw new Error(`Could not find ${EMUHAWK_EXE} in downloaded files`);
+    throw new Error(`Could not find ${EMUHAWK_BINARY} in downloaded files`);
   }
 
   // Copy entire BizHawk folder to our directory
   const bizhawkDir = path.dirname(emuHawkPath);
   fs.cpSync(bizhawkDir, APP_CONFIG.bizhawkPath, { recursive: true });
 
-  const finalEmuHawkPath = path.join(APP_CONFIG.bizhawkPath, EMUHAWK_EXE);
-  APP_CONFIG.emuhawkPath = finalEmuHawkPath;
+  // On Windows, launch EmuHawk.exe directly; on Unix, use EmuHawkMono.sh
+  const finalLauncherPath = path.join(APP_CONFIG.bizhawkPath, EMUHAWK_LAUNCHER);
+  APP_CONFIG.emuhawkPath = finalLauncherPath;
   saveAppConfig(state);
 
-  // Make executable on Unix platforms
+  // Make scripts executable on Unix platforms
   if (!isWindows) {
     try {
-      fs.chmodSync(finalEmuHawkPath, 0o755);
+      const scripts = fs.readdirSync(APP_CONFIG.bizhawkPath)
+        .filter(f => f.endsWith('.sh'));
+      for (const script of scripts) {
+        fs.chmodSync(path.join(APP_CONFIG.bizhawkPath, script), 0o755);
+      }
     } catch (e) {
-      console.warn('Could not set executable permission:', e.message);
+      console.warn('Could not set executable permissions:', e.message);
     }
   }
 
@@ -127,7 +134,7 @@ async function downloadBizHawk() {
   try {
     console.log('Starting BizHawk download...');
 
-    const existingBizHawkPath = path.join(APP_CONFIG.bizhawkPath, EMUHAWK_EXE);
+    const existingBizHawkPath = path.join(APP_CONFIG.bizhawkPath, EMUHAWK_LAUNCHER);
     if (fs.existsSync(existingBizHawkPath)) {
       if (state.mainWindow) {
         state.mainWindow.webContents.send('show-bizhawk-warning');
@@ -187,26 +194,22 @@ function findEmuHawkPath() {
     );
   } else if (isMac) {
     commonPaths.push(
-      '/Applications/BizHawk/EmuHawk',
-      path.join(home, 'Applications', 'BizHawk', 'EmuHawk'),
-      path.join(home, 'Desktop', 'BizHawk', 'EmuHawk'),
-      path.join(home, 'Downloads', 'BizHawk', 'EmuHawk'),
-      '/usr/local/bin/EmuHawk',
-      '/opt/homebrew/bin/EmuHawk'
+      '/Applications/BizHawk/EmuHawkMono.sh',
+      path.join(home, 'Applications', 'BizHawk', 'EmuHawkMono.sh'),
+      path.join(home, 'Desktop', 'BizHawk', 'EmuHawkMono.sh'),
+      path.join(home, 'Downloads', 'BizHawk', 'EmuHawkMono.sh')
     );
   } else {
-    // Linux
     commonPaths.push(
-      '/usr/bin/EmuHawk',
-      '/usr/local/bin/EmuHawk',
-      path.join(home, 'BizHawk', 'EmuHawk'),
-      path.join(home, 'Desktop', 'BizHawk', 'EmuHawk'),
-      path.join(home, 'Downloads', 'BizHawk', 'EmuHawk')
+      '/usr/local/bin/EmuHawkMono.sh',
+      path.join(home, 'BizHawk', 'EmuHawkMono.sh'),
+      path.join(home, 'Desktop', 'BizHawk', 'EmuHawkMono.sh'),
+      path.join(home, 'Downloads', 'BizHawk', 'EmuHawkMono.sh')
     );
   }
 
   // Always check the app's own install location
-  commonPaths.push(path.join(APP_CONFIG.bizhawkPath, EMUHAWK_EXE));
+  commonPaths.push(path.join(APP_CONFIG.bizhawkPath, EMUHAWK_LAUNCHER));
 
   for (const emuPath of commonPaths) {
     if (fs.existsSync(emuPath)) {
