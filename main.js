@@ -2,13 +2,13 @@ const { app, BrowserWindow } = require('electron');
 const { loadAppConfig } = require('./src/config');
 const state = require('./src/state');
 const { loadAuthData } = require('./src/auth');
-const { ensureRomsDirectory, monitorJsonFile } = require('./src/challenges');
+const { ensureRomsDirectory, monitorJsonFile, stopMonitoringJsonFile } = require('./src/challenges');
 const { createMainWindow } = require('./src/window');
 const { registerIpcHandlers } = require('./src/ipc');
 const { sendWebhookNotification } = require('./src/webhook');
 
 app.whenReady().then(async () => {
-  loadAppConfig();
+  loadAppConfig(state);
   registerIpcHandlers();
   ensureRomsDirectory();
 
@@ -38,6 +38,7 @@ app.on('activate', () => {
 });
 
 app.on('before-quit', () => {
+  stopMonitoringJsonFile();
   if (state.emuProcess) {
     state.emuProcess.kill();
   }

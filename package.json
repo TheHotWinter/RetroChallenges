@@ -26,7 +26,8 @@
   },
   "dependencies": {
     "adm-zip": "^0.5.16",
-    "axios": "^1.6.0"
+    "axios": "^1.6.0",
+    "axios-retry": "^4.5.0"
   },
   "build": {
     "appId": "com.retrochallenges.app",
@@ -35,8 +36,11 @@
       "output": "dist"
     },
     "files": [
-      "**/*",
-      "!dist/**/*"
+      "main.js",
+      "src/**/*",
+      "index.html",
+      "assets/**/*",
+      "package.json"
     ],
     "win": {
       "target": "nsis",
@@ -52,7 +56,9 @@
     }
   },
   "jest": {
-    "testMatch": ["**/tests/**/*.test.js"],
+    "testMatch": [
+      "**/tests/**/*.test.js"
+    ],
     "moduleNameMapper": {
       "^electron$": "<rootDir>/tests/__mocks__/electron.js"
     }
