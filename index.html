@@ -791,8 +791,12 @@
                 try {
                     const result = await window.api.invoke('force-download-bizhawk');
                     if (result.success) {
-                        showNotification('BizHawk reinstalled successfully!', 'success');
-                        loadEmuhawkPath(); // Refresh the path display
+                        loadEmuhawkPath();
+                        if (result.needsMono) {
+                            showMonoInstallPrompt();
+                        } else {
+                            showNotification('BizHawk reinstalled successfully!', 'success');
+                        }
                     } else {
                         showNotification(result.error || 'Failed to reinstall BizHawk', 'error');
                     }
@@ -800,6 +804,40 @@
                     console.error('Error reinstalling BizHawk:', error);
                     showNotification('Failed to reinstall BizHawk: ' + error.message, 'error');
                 }
+            });
+        }
+
+        // Show Mono install prompt
+        function showMonoInstallPrompt() {
+            const isMac = navigator.platform.toUpperCase().includes('MAC');
+            const installCmd = isMac ? 'brew install mono' : 'sudo apt install mono-complete';
+            const popup = document.createElement('div');
+            popup.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50';
+            popup.innerHTML = `
+                <div class="bg-slate-800 rounded-lg shadow-xl p-6 max-w-md mx-4 border border-slate-700">
+                    <div class="flex items-center mb-4">
+                        <i data-feather="alert-triangle" class="h-6 w-6 text-yellow-500 mr-3"></i>
+                        <h3 class="text-lg font-medium text-white">Mono Runtime Required</h3>
+                    </div>
+                    <div class="space-y-3 text-sm text-gray-300">
+                        <p>BizHawk was installed successfully, but it requires the <strong>Mono runtime</strong> to run on ${isMac ? 'macOS' : 'Linux'}.</p>
+                        <p>Open a terminal and run:</p>
+                        <div class="bg-slate-900 rounded-md p-3 font-mono text-green-400 text-xs select-all">${installCmd}</div>
+                        <p class="text-xs text-gray-400">After installing Mono, restart the app and your challenges will be ready to launch.</p>
+                    </div>
+                    <div class="mt-6">
+                        <button id="closeMonoPrompt" class="w-full px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                            Got it
+                        </button>
+                    </div>
+                </div>
+            `;
+
+            document.body.appendChild(popup);
+            feather.replace();
+
+            document.getElementById('closeMonoPrompt').addEventListener('click', () => {
+                popup.remove();
             });
         }
 
@@ -1037,8 +1075,12 @@
                 try {
                     const result = await window.api.invoke('download-bizhawk');
                     if (result.success) {
-                        showNotification('BizHawk downloaded and installed successfully!', 'success');
-                        loadEmuhawkPath(); // Refresh the path display
+                        loadEmuhawkPath();
+                        if (result.needsMono) {
+                            showMonoInstallPrompt();
+                        } else {
+                            showNotification('BizHawk downloaded and installed successfully!', 'success');
+                        }
                     } else if (result.needsConfirmation) {
                         // The warning popup will be shown automatically by the main process
                         // No need to show additional notification here

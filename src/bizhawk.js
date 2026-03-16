@@ -151,7 +151,8 @@ async function downloadBizHawk() {
       true
     );
 
-    return { success: true, message: 'BizHawk downloaded and installed successfully!' };
+    const needsMono = !isWindows && !checkMonoInstalled();
+    return { success: true, message: 'BizHawk downloaded and installed successfully!', needsMono };
   } catch (error) {
     console.error('Error downloading BizHawk:', error);
     return { success: false, error: error.message };
@@ -171,7 +172,8 @@ async function forceDownloadBizHawk() {
       true
     );
 
-    return { success: true, message: 'BizHawk downloaded and installed successfully!' };
+    const needsMono = !isWindows && !checkMonoInstalled();
+    return { success: true, message: 'BizHawk downloaded and installed successfully!', needsMono };
   } catch (error) {
     console.error('Error force downloading BizHawk:', error);
     return { success: false, error: error.message };
