@@ -6,7 +6,8 @@
   "scripts": {
     "start": "electron .",
     "build": "electron-builder",
-    "dist": "electron-builder --publish=never"
+    "dist": "electron-builder --publish=never",
+    "test": "jest"
   },
   "keywords": [
     "electron",
@@ -20,7 +21,8 @@
   "license": "MIT",
   "devDependencies": {
     "electron": "^38.1.2",
-    "electron-builder": "^24.6.4"
+    "electron-builder": "^24.6.4",
+    "jest": "^30.3.0"
   },
   "dependencies": {
     "adm-zip": "^0.5.16",
@@ -47,6 +49,12 @@
     "linux": {
       "target": "AppImage",
       "icon": "assets/icon.png"
+    }
+  },
+  "jest": {
+    "testMatch": ["**/tests/**/*.test.js"],
+    "moduleNameMapper": {
+      "^electron$": "<rootDir>/tests/__mocks__/electron.js"
     }
   }
 }

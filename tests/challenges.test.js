@@ -1,0 +1,165 @@
+jest.mock('electron');
+jest.mock('axios');
+jest.mock('adm-zip');
+
+const fs = require('fs');
+const path = require('path');
+const axios = require('axios');
+const { APP_CONFIG } = require('../src/config');
+const state = require('../src/state');
+const { fetchChallenges, downloadAssetsFromRepo, ensureRomsDirectory } = require('../src/challenges');
+
+// Reset state between tests
+beforeEach(() => {
+  state.challengesData = null;
+  state.mainWindow = null;
+  jest.restoreAllMocks();
+});
+
+describe('fetchChallenges', () => {
+  test('loads from local challenges.json when it exists', async () => {
+    const mockData = { games: [{ name: 'TestGame', challenges: [] }] };
+    const localPath = path.join(__dirname, '..', 'challenges.json');
+
+    jest.spyOn(fs, 'existsSync').mockReturnValue(true);
+    jest.spyOn(fs, 'readFileSync').mockReturnValue(JSON.stringify(mockData));
+
+    const result = await fetchChallenges();
+
+    expect(fs.existsSync).toHaveBeenCalledWith(localPath);
+    expect(result).toEqual(mockData);
+    expect(state.challengesData).toEqual(mockData);
+  });
+
+  test('falls back to remote URL when local file does not exist', async () => {
+    const mockData = { games: [{ name: 'RemoteGame', challenges: [] }] };
+
+    jest.spyOn(fs, 'existsSync').mockReturnValue(false);
+    axios.get.mockResolvedValue({ data: mockData });
+
+    const result = await fetchChallenges();
+
+    expect(axios.get).toHaveBeenCalledWith(APP_CONFIG.challengesUrl, expect.objectContaining({
+      timeout: 10000
+    }));
+    expect(result).toEqual(mockData);
+    expect(state.challengesData).toEqual(mockData);
+  });
+
+  test('returns fallback mock data when both local and remote fail', async () => {
+    jest.spyOn(fs, 'existsSync').mockReturnValue(false);
+    axios.get.mockRejectedValue(new Error('Network error'));
+
+    const result = await fetchChallenges();
+
+    expect(result.games).toHaveLength(2);
+    expect(result.games[0].name).toBe('Castlevania');
+    expect(result.games[1].name).toBe('Super Mario Bros');
+    expect(state.challengesData).toEqual(result);
+  });
+
+  test('sets state.challengesData on successful fetch', async () => {
+    const mockData = { games: [{ name: 'StateTest', challenges: [{ name: 'c1' }] }] };
+
+    jest.spyOn(fs, 'existsSync').mockReturnValue(true);
+    jest.spyOn(fs, 'readFileSync').mockReturnValue(JSON.stringify(mockData));
+
+    await fetchChallenges();
+
+    expect(state.challengesData).toEqual(mockData);
+  });
+});
+
+describe('downloadAssetsFromRepo', () => {
+  test('returns success false when download fails', async () => {
+    axios.get.mockRejectedValue(new Error('Download failed'));
+
+    const result = await downloadAssetsFromRepo();
+
+    expect(result.success).toBe(false);
+    expect(result.error).toBe('Download failed');
+  });
+
+  test('returns success false when extracted folder not found', async () => {
+    axios.get.mockResolvedValue({ data: Buffer.from('fake-zip') });
+
+    jest.spyOn(fs, 'existsSync').mockReturnValue(false);
+    jest.spyOn(fs, 'mkdirSync').mockReturnValue(undefined);
+    jest.spyOn(fs, 'writeFileSync').mockReturnValue(undefined);
+    jest.spyOn(fs, 'readdirSync').mockReturnValue(['some-other-folder']);
+    jest.spyOn(fs, 'rmSync').mockReturnValue(undefined);
+
+    const AdmZip = require('adm-zip');
+    AdmZip.mockImplementation(() => ({
+      extractAllTo: jest.fn()
+    }));
+
+    const result = await downloadAssetsFromRepo();
+
+    expect(result.success).toBe(false);
+    expect(result.error).toBe('Could not find extracted assets folder');
+  });
+
+  test('extracts and copies files on success', async () => {
+    axios.get.mockResolvedValue({ data: Buffer.from('fake-zip') });
+
+    jest.spyOn(fs, 'existsSync').mockReturnValue(false);
+    jest.spyOn(fs, 'mkdirSync').mockReturnValue(undefined);
+    jest.spyOn(fs, 'writeFileSync').mockReturnValue(undefined);
+    jest.spyOn(fs, 'rmSync').mockReturnValue(undefined);
+    const copyFileSpy = jest.spyOn(fs, 'copyFileSync').mockReturnValue(undefined);
+    const cpSpy = jest.spyOn(fs, 'cpSync').mockReturnValue(undefined);
+
+    // First call: list temp-extract contents; second call: list assets folder contents
+    let readdirCallCount = 0;
+    jest.spyOn(fs, 'readdirSync').mockImplementation(() => {
+      readdirCallCount++;
+      if (readdirCallCount === 1) return ['retrochallenges-assets-main'];
+      return ['file1.lua', 'subdir'];
+    });
+    jest.spyOn(fs, 'statSync').mockImplementation((filePath) => ({
+      isDirectory: () => filePath.endsWith('subdir')
+    }));
+
+    const AdmZip = require('adm-zip');
+    AdmZip.mockImplementation(() => ({
+      extractAllTo: jest.fn()
+    }));
+
+    const result = await downloadAssetsFromRepo();
+
+    expect(result.success).toBe(true);
+    expect(copyFileSpy).toHaveBeenCalled(); // file1.lua
+    expect(cpSpy).toHaveBeenCalled(); // subdir
+  });
+});
+
+describe('ensureRomsDirectory', () => {
+  test('creates roms directory if it does not exist', () => {
+    jest.spyOn(fs, 'existsSync').mockReturnValue(false);
+    const mkdirSpy = jest.spyOn(fs, 'mkdirSync').mockReturnValue(undefined);
+
+    ensureRomsDirectory();
+
+    expect(mkdirSpy).toHaveBeenCalledWith(APP_CONFIG.romsPath, { recursive: true });
+  });
+
+  test('does not create directory if it already exists', () => {
+    jest.spyOn(fs, 'existsSync').mockReturnValue(true);
+    const mkdirSpy = jest.spyOn(fs, 'mkdirSync').mockReturnValue(undefined);
+
+    ensureRomsDirectory();
+
+    expect(mkdirSpy).not.toHaveBeenCalled();
+  });
+
+  test('handles errors gracefully', () => {
+    jest.spyOn(fs, 'existsSync').mockReturnValue(false);
+    jest.spyOn(fs, 'mkdirSync').mockImplementation(() => { throw new Error('Permission denied'); });
+    const consoleSpy = jest.spyOn(console, 'error').mockImplementation();
+
+    ensureRomsDirectory();
+
+    expect(consoleSpy).toHaveBeenCalled();
+  });
+});
