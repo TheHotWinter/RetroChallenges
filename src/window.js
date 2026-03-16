@@ -12,7 +12,7 @@ function createMainWindow() {
       contextIsolation: true,
       preload: path.join(__dirname, 'preload.js')
     },
-    icon: path.join(__dirname, '..', 'assets', 'favicon.ico'),
+    icon: path.join(__dirname, '..', 'assets', process.platform === 'win32' ? 'favicon.ico' : 'icon.png'),
     title: 'RetroChallenges',
     autoHideMenuBar: true
   });

@@ -7,6 +7,9 @@ const { createMainWindow } = require('./src/window');
 const { registerIpcHandlers } = require('./src/ipc');
 const { sendWebhookNotification } = require('./src/webhook');
 
+// Set app name so macOS menu bar shows "RetroChallenges" instead of "Electron"
+app.name = 'RetroChallenges';
+
 app.whenReady().then(async () => {
   loadAppConfig(state);
   registerIpcHandlers();
