@@ -64,7 +64,7 @@ async function downloadAssetsFromRepo() {
       responseType: 'arraybuffer',
       headers: { 'User-Agent': 'RetroChallenges-App/1.0' },
       onDownloadProgress: (progressEvent) => {
-        if (state.mainWindow && progressEvent.total) {
+        if (state.mainWindow && !state.mainWindow.isDestroyed() && progressEvent.total) {
           const percent = Math.round((progressEvent.loaded / progressEvent.total) * 100);
           state.mainWindow.webContents.send('download-progress', {
             type: 'assets',

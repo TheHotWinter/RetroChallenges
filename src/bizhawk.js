@@ -24,7 +24,7 @@ function findPlatformAsset(assets) {
 
 // Core download + extract logic shared by downloadBizHawk and forceDownloadBizHawk
 async function downloadAndInstallBizHawk() {
-  if (state.mainWindow) {
+  if (state.mainWindow && !state.mainWindow.isDestroyed()) {
     state.mainWindow.webContents.send('show-bizhawk-popup');
   }
 
@@ -45,7 +45,7 @@ async function downloadAndInstallBizHawk() {
     responseType: 'arraybuffer',
     headers: { 'User-Agent': 'RetroChallenges-App/1.0' },
     onDownloadProgress: (progressEvent) => {
-      if (state.mainWindow && progressEvent.total) {
+      if (state.mainWindow && !state.mainWindow.isDestroyed() && progressEvent.total) {
         const percent = Math.round((progressEvent.loaded / progressEvent.total) * 100);
         state.mainWindow.webContents.send('download-progress', {
           type: 'bizhawk',
@@ -136,7 +136,12 @@ async function downloadBizHawk() {
 
     const existingBizHawkPath = path.join(APP_CONFIG.bizhawkPath, EMUHAWK_LAUNCHER);
     if (fs.existsSync(existingBizHawkPath)) {
-      if (state.mainWindow) {
+      // BizHawk exists — check if Mono is needed
+      const needsMono = !isWindows && !checkMonoInstalled();
+      if (needsMono) {
+        return { success: true, message: 'BizHawk is already installed', needsMono: true };
+      }
+      if (state.mainWindow && !state.mainWindow.isDestroyed()) {
         state.mainWindow.webContents.send('show-bizhawk-warning');
       }
       return { success: false, error: 'BizHawk already installed', needsConfirmation: true };
