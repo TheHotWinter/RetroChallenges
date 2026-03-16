@@ -6,15 +6,15 @@ const state = require('./state');
 
 async function fetchChallenges() {
   try {
-    // Try to load from local file first (for development)
-    const localChallengesPath = path.join(__dirname, '..', 'challenges.json');
-    if (fs.existsSync(localChallengesPath)) {
-      console.log('Loading challenges from local file:', localChallengesPath);
-      state.challengesData = JSON.parse(fs.readFileSync(localChallengesPath, 'utf8'));
+    // Load from downloaded assets directory (populated by downloadAssetsFromRepo)
+    const downloadedPath = path.join(APP_CONFIG.challengesPath, 'challenges.json');
+    if (fs.existsSync(downloadedPath)) {
+      console.log('Loading challenges from downloaded assets:', downloadedPath);
+      state.challengesData = JSON.parse(fs.readFileSync(downloadedPath, 'utf8'));
       return state.challengesData;
     }
 
-    // Fallback to remote URL
+    // Fallback to remote URL if assets haven't been downloaded yet
     console.log('Loading challenges from remote URL:', APP_CONFIG.challengesUrl);
     const response = await axios.get(APP_CONFIG.challengesUrl, {
       timeout: 10000,
@@ -25,27 +25,7 @@ async function fetchChallenges() {
     return state.challengesData;
   } catch (error) {
     console.error('Error fetching challenges:', error.message);
-    // Return mock data if fetch fails
-    state.challengesData = {
-      games: [
-        {
-          name: "Castlevania",
-          rom: "castlevania.nes",
-          challenges: [
-            { name: "Get 5000 points!", lua: "castlevania_5000pts.lua" },
-            { name: "Kill Dracula!", lua: "castlevania_dracula.lua" }
-          ]
-        },
-        {
-          name: "Super Mario Bros",
-          rom: "super_mario_bros.nes",
-          challenges: [
-            { name: "Get 5 1ups!", lua: "mario_5_1ups.lua" },
-            { name: "Speed Run Level 1", lua: "mario_speedrun.lua" }
-          ]
-        }
-      ]
-    };
+    state.challengesData = { games: [] };
     return state.challengesData;
   }
 }

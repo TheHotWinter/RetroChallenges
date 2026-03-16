@@ -17,21 +17,21 @@ beforeEach(() => {
 });
 
 describe('fetchChallenges', () => {
-  test('loads from local challenges.json when it exists', async () => {
+  test('loads from downloaded assets challenges.json when it exists', async () => {
     const mockData = { games: [{ name: 'TestGame', challenges: [] }] };
-    const localPath = path.join(__dirname, '..', 'challenges.json');
+    const downloadedPath = path.join(APP_CONFIG.challengesPath, 'challenges.json');
 
     jest.spyOn(fs, 'existsSync').mockReturnValue(true);
     jest.spyOn(fs, 'readFileSync').mockReturnValue(JSON.stringify(mockData));
 
     const result = await fetchChallenges();
 
-    expect(fs.existsSync).toHaveBeenCalledWith(localPath);
+    expect(fs.existsSync).toHaveBeenCalledWith(downloadedPath);
     expect(result).toEqual(mockData);
     expect(state.challengesData).toEqual(mockData);
   });
 
-  test('falls back to remote URL when local file does not exist', async () => {
+  test('falls back to remote URL when downloaded assets do not exist', async () => {
     const mockData = { games: [{ name: 'RemoteGame', challenges: [] }] };
 
     jest.spyOn(fs, 'existsSync').mockReturnValue(false);
@@ -46,16 +46,14 @@ describe('fetchChallenges', () => {
     expect(state.challengesData).toEqual(mockData);
   });
 
-  test('returns fallback mock data when both local and remote fail', async () => {
+  test('returns empty games array when both downloaded and remote fail', async () => {
     jest.spyOn(fs, 'existsSync').mockReturnValue(false);
     axios.get.mockRejectedValue(new Error('Network error'));
 
     const result = await fetchChallenges();
 
-    expect(result.games).toHaveLength(2);
-    expect(result.games[0].name).toBe('Castlevania');
-    expect(result.games[1].name).toBe('Super Mario Bros');
-    expect(state.challengesData).toEqual(result);
+    expect(result).toEqual({ games: [] });
+    expect(state.challengesData).toEqual({ games: [] });
   });
 
   test('sets state.challengesData on successful fetch', async () => {
