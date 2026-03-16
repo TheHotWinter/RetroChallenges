@@ -1,7 +1,7 @@
 const path = require('path');
 const fs = require('fs');
 const { spawn } = require('child_process');
-const axios = require('axios');
+const { httpClient } = require('./http');
 const { APP_CONFIG, saveAppConfig } = require('./config');
 const state = require('./state');
 const { sendWebhookNotification } = require('./webhook');
@@ -14,7 +14,7 @@ async function downloadAndInstallBizHawk() {
   }
 
   // Get latest release from GitHub API
-  const response = await axios.get('https://api.github.com/repos/TASEmulators/BizHawk/releases/latest', {
+  const response = await httpClient.get('https://api.github.com/repos/TASEmulators/BizHawk/releases/latest', {
     headers: { 'User-Agent': 'RetroChallenges-App/1.0' }
   });
 
@@ -27,9 +27,20 @@ async function downloadAndInstallBizHawk() {
 
   console.log('Downloading BizHawk from:', asset.browser_download_url);
 
-  const zipResponse = await axios.get(asset.browser_download_url, {
+  const zipResponse = await httpClient.get(asset.browser_download_url, {
     responseType: 'arraybuffer',
-    headers: { 'User-Agent': 'RetroChallenges-App/1.0' }
+    headers: { 'User-Agent': 'RetroChallenges-App/1.0' },
+    onDownloadProgress: (progressEvent) => {
+      if (state.mainWindow && progressEvent.total) {
+        const percent = Math.round((progressEvent.loaded / progressEvent.total) * 100);
+        state.mainWindow.webContents.send('download-progress', {
+          type: 'bizhawk',
+          loaded: progressEvent.loaded,
+          total: progressEvent.total,
+          percent
+        });
+      }
+    }
   });
 
   // Create BizHawk directory
@@ -76,7 +87,7 @@ async function downloadAndInstallBizHawk() {
   // Set the EmuHawk path
   const finalEmuHawkPath = path.join(APP_CONFIG.bizhawkPath, 'EmuHawk.exe');
   APP_CONFIG.emuhawkPath = finalEmuHawkPath;
-  saveAppConfig();
+  saveAppConfig(state);
 
   // Clean up temporary files
   fs.rmSync(zipPath);

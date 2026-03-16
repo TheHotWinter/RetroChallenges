@@ -1,24 +1,26 @@
 jest.mock('electron');
-jest.mock('axios');
 jest.mock('adm-zip');
+jest.mock('../src/http', () => ({
+  httpClient: { get: jest.fn() }
+}));
 
 const fs = require('fs');
 const path = require('path');
-const axios = require('axios');
+const { httpClient } = require('../src/http');
 const { APP_CONFIG } = require('../src/config');
 const state = require('../src/state');
 const { fetchChallenges, downloadAssetsFromRepo, ensureRomsDirectory } = require('../src/challenges');
 
-// Reset state between tests
 beforeEach(() => {
   state.challengesData = null;
   state.mainWindow = null;
+  httpClient.get.mockReset();
   jest.restoreAllMocks();
 });
 
 describe('fetchChallenges', () => {
   test('loads from downloaded assets challenges.json when it exists', async () => {
-    const mockData = { games: [{ name: 'TestGame', challenges: [] }] };
+    const mockData = { games: [{ name: 'TestGame', challenges: [{ name: 'c1', lua: 'test.lua' }] }] };
     const downloadedPath = path.join(APP_CONFIG.challengesPath, 'challenges.json');
 
     jest.spyOn(fs, 'existsSync').mockReturnValue(true);
@@ -32,14 +34,14 @@ describe('fetchChallenges', () => {
   });
 
   test('falls back to remote URL when downloaded assets do not exist', async () => {
-    const mockData = { games: [{ name: 'RemoteGame', challenges: [] }] };
+    const mockData = { games: [{ name: 'RemoteGame', challenges: [{ name: 'c1', lua: 'test.lua' }] }] };
 
     jest.spyOn(fs, 'existsSync').mockReturnValue(false);
-    axios.get.mockResolvedValue({ data: mockData });
+    httpClient.get.mockResolvedValue({ data: mockData });
 
     const result = await fetchChallenges();
 
-    expect(axios.get).toHaveBeenCalledWith(APP_CONFIG.challengesUrl, expect.objectContaining({
+    expect(httpClient.get).toHaveBeenCalledWith(APP_CONFIG.challengesUrl, expect.objectContaining({
       timeout: 10000
     }));
     expect(result).toEqual(mockData);
@@ -48,7 +50,7 @@ describe('fetchChallenges', () => {
 
   test('returns empty games array when both downloaded and remote fail', async () => {
     jest.spyOn(fs, 'existsSync').mockReturnValue(false);
-    axios.get.mockRejectedValue(new Error('Network error'));
+    httpClient.get.mockRejectedValue(new Error('Network error'));
 
     const result = await fetchChallenges();
 
@@ -57,7 +59,7 @@ describe('fetchChallenges', () => {
   });
 
   test('sets state.challengesData on successful fetch', async () => {
-    const mockData = { games: [{ name: 'StateTest', challenges: [{ name: 'c1' }] }] };
+    const mockData = { games: [{ name: 'StateTest', challenges: [{ name: 'c1', lua: 'x.lua' }] }] };
 
     jest.spyOn(fs, 'existsSync').mockReturnValue(true);
     jest.spyOn(fs, 'readFileSync').mockReturnValue(JSON.stringify(mockData));
@@ -66,11 +68,42 @@ describe('fetchChallenges', () => {
 
     expect(state.challengesData).toEqual(mockData);
   });
+
+  test('rejects invalid data structure from downloaded file', async () => {
+    const invalidData = { games: 'not an array' };
+
+    jest.spyOn(fs, 'existsSync').mockReturnValue(true);
+    jest.spyOn(fs, 'readFileSync').mockReturnValue(JSON.stringify(invalidData));
+
+    const result = await fetchChallenges();
+
+    expect(result).toEqual({ games: [] });
+  });
+
+  test('rejects challenges missing required fields', async () => {
+    const invalidData = { games: [{ name: 'Game', challenges: [{ name: 'c1' }] }] };
+
+    jest.spyOn(fs, 'existsSync').mockReturnValue(true);
+    jest.spyOn(fs, 'readFileSync').mockReturnValue(JSON.stringify(invalidData));
+
+    const result = await fetchChallenges();
+
+    expect(result).toEqual({ games: [] });
+  });
+
+  test('rejects invalid remote data', async () => {
+    jest.spyOn(fs, 'existsSync').mockReturnValue(false);
+    httpClient.get.mockResolvedValue({ data: { notGames: true } });
+
+    const result = await fetchChallenges();
+
+    expect(result).toEqual({ games: [] });
+  });
 });
 
 describe('downloadAssetsFromRepo', () => {
   test('returns success false when download fails', async () => {
-    axios.get.mockRejectedValue(new Error('Download failed'));
+    httpClient.get.mockRejectedValue(new Error('Download failed'));
 
     const result = await downloadAssetsFromRepo();
 
@@ -79,7 +112,7 @@ describe('downloadAssetsFromRepo', () => {
   });
 
   test('returns success false when extracted folder not found', async () => {
-    axios.get.mockResolvedValue({ data: Buffer.from('fake-zip') });
+    httpClient.get.mockResolvedValue({ data: Buffer.from('fake-zip') });
 
     jest.spyOn(fs, 'existsSync').mockReturnValue(false);
     jest.spyOn(fs, 'mkdirSync').mockReturnValue(undefined);
@@ -99,7 +132,7 @@ describe('downloadAssetsFromRepo', () => {
   });
 
   test('extracts and copies files on success', async () => {
-    axios.get.mockResolvedValue({ data: Buffer.from('fake-zip') });
+    httpClient.get.mockResolvedValue({ data: Buffer.from('fake-zip') });
 
     jest.spyOn(fs, 'existsSync').mockReturnValue(false);
     jest.spyOn(fs, 'mkdirSync').mockReturnValue(undefined);
@@ -108,7 +141,6 @@ describe('downloadAssetsFromRepo', () => {
     const copyFileSpy = jest.spyOn(fs, 'copyFileSync').mockReturnValue(undefined);
     const cpSpy = jest.spyOn(fs, 'cpSync').mockReturnValue(undefined);
 
-    // First call: list temp-extract contents; second call: list assets folder contents
     let readdirCallCount = 0;
     jest.spyOn(fs, 'readdirSync').mockImplementation(() => {
       readdirCallCount++;
@@ -127,8 +159,8 @@ describe('downloadAssetsFromRepo', () => {
     const result = await downloadAssetsFromRepo();
 
     expect(result.success).toBe(true);
-    expect(copyFileSpy).toHaveBeenCalled(); // file1.lua
-    expect(cpSpy).toHaveBeenCalled(); // subdir
+    expect(copyFileSpy).toHaveBeenCalled();
+    expect(cpSpy).toHaveBeenCalled();
   });
 });
 

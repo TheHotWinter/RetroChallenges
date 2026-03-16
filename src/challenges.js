@@ -1,8 +1,21 @@
 const path = require('path');
 const fs = require('fs');
-const axios = require('axios');
+const { httpClient } = require('./http');
 const { APP_CONFIG } = require('./config');
 const state = require('./state');
+
+function validateChallengesData(data) {
+  if (!data || !Array.isArray(data.games)) {
+    return false;
+  }
+  return data.games.every(game =>
+    typeof game.name === 'string' &&
+    Array.isArray(game.challenges) &&
+    game.challenges.every(c =>
+      typeof c.name === 'string' && typeof c.lua === 'string'
+    )
+  );
+}
 
 async function fetchChallenges() {
   try {
@@ -10,16 +23,27 @@ async function fetchChallenges() {
     const downloadedPath = path.join(APP_CONFIG.challengesPath, 'challenges.json');
     if (fs.existsSync(downloadedPath)) {
       console.log('Loading challenges from downloaded assets:', downloadedPath);
-      state.challengesData = JSON.parse(fs.readFileSync(downloadedPath, 'utf8'));
+      const parsed = JSON.parse(fs.readFileSync(downloadedPath, 'utf8'));
+      if (!validateChallengesData(parsed)) {
+        console.error('Invalid challenges data structure in downloaded file');
+        state.challengesData = { games: [] };
+        return state.challengesData;
+      }
+      state.challengesData = parsed;
       return state.challengesData;
     }
 
     // Fallback to remote URL if assets haven't been downloaded yet
     console.log('Loading challenges from remote URL:', APP_CONFIG.challengesUrl);
-    const response = await axios.get(APP_CONFIG.challengesUrl, {
-      timeout: 10000,
-      headers: { 'User-Agent': 'RetroChallenges-App/1.0' }
+    const response = await httpClient.get(APP_CONFIG.challengesUrl, {
+      timeout: 10000
     });
+
+    if (!validateChallengesData(response.data)) {
+      console.error('Invalid challenges data structure from remote URL');
+      state.challengesData = { games: [] };
+      return state.challengesData;
+    }
 
     state.challengesData = response.data;
     return state.challengesData;
@@ -36,9 +60,20 @@ async function downloadAssetsFromRepo() {
     const releaseUrl = 'https://github.com/mattd1980/retrochallenges-assets/archive/refs/heads/main.zip';
 
     console.log('Downloading assets from GitHub release...');
-    const response = await axios.get(releaseUrl, {
+    const response = await httpClient.get(releaseUrl, {
       responseType: 'arraybuffer',
-      headers: { 'User-Agent': 'RetroChallenges-App/1.0' }
+      headers: { 'User-Agent': 'RetroChallenges-App/1.0' },
+      onDownloadProgress: (progressEvent) => {
+        if (state.mainWindow && progressEvent.total) {
+          const percent = Math.round((progressEvent.loaded / progressEvent.total) * 100);
+          state.mainWindow.webContents.send('download-progress', {
+            type: 'assets',
+            loaded: progressEvent.loaded,
+            total: progressEvent.total,
+            percent
+          });
+        }
+      }
     });
 
     const challengesDir = APP_CONFIG.challengesPath;
@@ -124,4 +159,8 @@ function monitorJsonFile() {
   });
 }
 
-module.exports = { fetchChallenges, downloadAssetsFromRepo, ensureRomsDirectory, monitorJsonFile };
+function stopMonitoringJsonFile() {
+  fs.unwatchFile(APP_CONFIG.jsonOutputPath);
+}
+
+module.exports = { fetchChallenges, downloadAssetsFromRepo, ensureRomsDirectory, monitorJsonFile, stopMonitoringJsonFile };

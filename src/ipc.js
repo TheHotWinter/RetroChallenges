@@ -35,7 +35,7 @@ function registerIpcHandlers() {
 
     if (!result.canceled && result.filePaths.length > 0) {
       APP_CONFIG.emuhawkPath = result.filePaths[0];
-      saveAppConfig();
+      saveAppConfig(state);
       return result.filePaths[0];
     }
     return null;
@@ -73,18 +73,10 @@ function registerIpcHandlers() {
       console.log('Game Data:', JSON.stringify(gameData, null, 2));
       console.log('Challenge Data:', JSON.stringify(challengeData, null, 2));
 
-      // Determine ROM filename based on game name
-      let romFileName;
-      switch (gameData.name.toLowerCase()) {
-        case 'castlevania':
-          romFileName = 'castlevania.nes';
-          break;
-        case 'super mario bros':
-          romFileName = 'super_mario_bros.nes';
-          break;
-        default:
-          romFileName = `${gameData.name.toLowerCase().replace(/\s+/g, '_')}.nes`;
-      }
+      // Get ROM filename from challenge data, fall back to name-based convention
+      const romFileName = gameData.rom
+        ? path.basename(gameData.rom)
+        : `${gameData.name.toLowerCase().replace(/\s+/g, '_')}.nes`;
 
       const romPath = path.join(APP_CONFIG.romsPath, romFileName);
       if (!fs.existsSync(romPath)) {
@@ -121,7 +113,7 @@ function registerIpcHandlers() {
           'Challenge Launched',
           true
         );
-        return 'success';
+        return { success: true };
       } else {
         if (!APP_CONFIG.emuhawkPath) {
           return { success: false, error: 'Failed to launch challenge: EmuHawk path not configured. Please click the auto-detect button or use Browse to select EmuHawk.exe manually.' };
@@ -152,7 +144,7 @@ function registerIpcHandlers() {
     const detectedPath = findEmuHawkPath();
     if (detectedPath) {
       APP_CONFIG.emuhawkPath = detectedPath;
-      saveAppConfig();
+      saveAppConfig(state);
       return { success: true, path: detectedPath };
     }
     return { success: false, message: 'EmuHawk not found in common locations' };
@@ -166,6 +158,14 @@ function registerIpcHandlers() {
   ipcMain.handle('get-config', () => ({
     emuhawkPath: APP_CONFIG.emuhawkPath
   }));
+
+  ipcMain.handle('get-telemetry', () => state.telemetryEnabled);
+
+  ipcMain.handle('set-telemetry', (event, enabled) => {
+    state.telemetryEnabled = !!enabled;
+    saveAppConfig(state);
+    return state.telemetryEnabled;
+  });
 
   ipcMain.handle('open-rom-folder', async () => {
     try {

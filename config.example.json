@@ -6,5 +6,8 @@
   },
   "challenges": {
     "url": "https://raw.githubusercontent.com/mattd1980/retrochallenges-assets/refs/heads/main/challenges.json"
+  },
+  "discord": {
+    "webhookUrl": "YOUR_DISCORD_WEBHOOK_URL"
   }
 }

@@ -1,6 +1,6 @@
 const { BrowserWindow } = require('electron');
 const fs = require('fs');
-const axios = require('axios');
+const { httpClient } = require('./http');
 const { CONFIG, APP_CONFIG } = require('./config');
 const state = require('./state');
 const { sendWebhookNotification } = require('./webhook');
@@ -97,7 +97,7 @@ async function refreshAuthToken(refreshToken) {
   }
 
   try {
-    const response = await axios.post('https://oauth2.googleapis.com/token', {
+    const response = await httpClient.post('https://oauth2.googleapis.com/token', {
       client_id: CONFIG.google.clientId,
       client_secret: CONFIG.google.clientSecret,
       refresh_token: refreshToken,
@@ -106,7 +106,7 @@ async function refreshAuthToken(refreshToken) {
 
     const { access_token, expires_in } = response.data;
 
-    const userResponse = await axios.get('https://www.googleapis.com/oauth2/v2/userinfo', {
+    const userResponse = await httpClient.get('https://www.googleapis.com/oauth2/v2/userinfo', {
       headers: { 'Authorization': `Bearer ${access_token}` }
     });
 

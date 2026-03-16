@@ -5,7 +5,8 @@ const state = {
   isAuthenticated: false,
   userInfo: null,
   challengesData: null,
-  authTokens: null
+  authTokens: null,
+  telemetryEnabled: false
 };
 
 module.exports = state;

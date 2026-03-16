@@ -41,15 +41,19 @@ const APP_CONFIG = {
   bizhawkPath: path.join(app.getPath('userData'), 'bizhawk')
 };
 
-const DISCORD_WEBHOOK_URL = 'https://discord.com/api/webhooks/1419125129111277578/Zm-DL3Vl1UPdEtU4SEY9yJwPez7ysbQWOMEt5Jgy8gVLlO4DdHV1KfQ4KRuM9KWR9DDQ';
+CONFIG.discord = CONFIG.discord || {};
+const DISCORD_WEBHOOK_URL = process.env.DISCORD_WEBHOOK_URL || CONFIG.discord.webhookUrl || '';
 
 // Load/save app configuration
-function loadAppConfig() {
+function loadAppConfig(state) {
   try {
     if (fs.existsSync(APP_CONFIG.configPath)) {
       const configData = JSON.parse(fs.readFileSync(APP_CONFIG.configPath, 'utf8'));
       if (configData.emuhawkPath) {
         APP_CONFIG.emuhawkPath = configData.emuhawkPath;
+      }
+      if (state && typeof configData.telemetryEnabled === 'boolean') {
+        state.telemetryEnabled = configData.telemetryEnabled;
       }
     }
   } catch (error) {
@@ -57,10 +61,11 @@ function loadAppConfig() {
   }
 }
 
-function saveAppConfig() {
+function saveAppConfig(state) {
   try {
     const configData = {
-      emuhawkPath: APP_CONFIG.emuhawkPath
+      emuhawkPath: APP_CONFIG.emuhawkPath,
+      telemetryEnabled: state ? state.telemetryEnabled : false
     };
     fs.writeFileSync(APP_CONFIG.configPath, JSON.stringify(configData, null, 2));
   } catch (error) {

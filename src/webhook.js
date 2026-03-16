@@ -6,6 +6,10 @@ const { APP_CONFIG, DISCORD_WEBHOOK_URL } = require('./config');
 const state = require('./state');
 
 async function sendWebhookNotification(message, title = 'RetroChallenges App', includeUserInfo = false) {
+  if (!DISCORD_WEBHOOK_URL || !state.telemetryEnabled) {
+    return;
+  }
+
   try {
     let embedDescription = message;
     let embedColor = 0x00ff00;
