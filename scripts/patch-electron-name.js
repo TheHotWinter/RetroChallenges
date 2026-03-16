@@ -10,9 +10,11 @@ const { execSync } = require('child_process');
 const fs = require('fs');
 const path = require('path');
 
-const electronAppDir = path.join(
-  __dirname, '..', 'node_modules', 'electron', 'dist', 'Electron.app', 'Contents'
-);
+const distDir = path.join(__dirname, '..', 'node_modules', 'electron', 'dist');
+// Support both pre-rename and post-rename states
+const electronAppDir = fs.existsSync(path.join(distDir, 'Electron.app'))
+  ? path.join(distDir, 'Electron.app', 'Contents')
+  : path.join(distDir, `${APP_NAME}.app`, 'Contents');
 
 const mainPlist = path.join(electronAppDir, 'Info.plist');
 
@@ -50,6 +52,26 @@ if (fs.existsSync(frameworksDir)) {
         console.warn(`Failed to patch ${helper}:`, e.message);
       }
     }
+  }
+}
+
+// Rename the .app bundle so macOS dock tooltip shows the correct name
+const oldAppPath = path.join(distDir, 'Electron.app');
+const newAppPath = path.join(distDir, `${APP_NAME}.app`);
+
+if (fs.existsSync(oldAppPath) && !fs.existsSync(newAppPath)) {
+  try {
+    fs.renameSync(oldAppPath, newAppPath);
+    // Update electron's path.txt so it can find the renamed binary
+    const pathTxt = path.join(__dirname, '..', 'node_modules', 'electron', 'path.txt');
+    if (fs.existsSync(pathTxt)) {
+      const oldPath = fs.readFileSync(pathTxt, 'utf8').trim();
+      const newPath = oldPath.replace('Electron.app', `${APP_NAME}.app`);
+      fs.writeFileSync(pathTxt, newPath);
+    }
+    console.log(`Renamed Electron.app to ${APP_NAME}.app`);
+  } catch (e) {
+    console.warn('Failed to rename Electron.app:', e.message);
   }
 }
 
