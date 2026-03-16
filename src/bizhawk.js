@@ -228,6 +228,13 @@ function findEmuHawkPath() {
   return null;
 }
 
+// Common Mono install locations on macOS
+const MONO_PATHS = [
+  '/Library/Frameworks/Mono.framework/Versions/Current/bin/mono',
+  '/usr/local/bin/mono',
+  '/opt/homebrew/bin/mono'
+];
+
 // Check if Mono is available (required on macOS/Linux)
 function checkMonoInstalled() {
   if (isWindows) return true;
@@ -235,7 +242,18 @@ function checkMonoInstalled() {
     execSync('which mono', { stdio: 'ignore' });
     return true;
   } catch {
-    return false;
+    // Check common install locations
+    return MONO_PATHS.some(p => fs.existsSync(p));
+  }
+}
+
+// Get the path to mono binary
+function getMonoPath() {
+  try {
+    return execSync('which mono', { encoding: 'utf8' }).trim();
+  } catch {
+    const found = MONO_PATHS.find(p => fs.existsSync(p));
+    return found || null;
   }
 }
 
@@ -278,9 +296,20 @@ function launchEmuHawk(romPath, luaScriptPath) {
     const args = [romPath, '--lua', luaScriptPath];
     console.log('Launching EmuHawk with:', APP_CONFIG.emuhawkPath, args);
 
+    // Ensure Mono is on PATH for the EmuHawk launcher script
+    const env = { ...process.env };
+    if (!isWindows) {
+      const monoPath = getMonoPath();
+      if (monoPath) {
+        const monoDir = path.dirname(monoPath);
+        env.PATH = `${monoDir}:${env.PATH || ''}`;
+      }
+    }
+
     state.emuProcess = spawn(APP_CONFIG.emuhawkPath, args, {
       detached: true,
-      stdio: ['ignore', 'pipe', 'pipe']
+      stdio: ['ignore', 'pipe', 'pipe'],
+      env
     });
 
     state.emuProcess.on('error', (error) => {
