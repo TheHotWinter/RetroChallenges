@@ -1,4 +1,4 @@
-const { app, BrowserWindow, nativeImage } = require('electron');
+const { app, BrowserWindow, Menu, nativeImage } = require('electron');
 const path = require('path');
 const { loadAppConfig } = require('./src/config');
 const state = require('./src/state');
@@ -15,6 +15,28 @@ app.name = 'RetroChallenges';
 if (process.platform === 'darwin' && app.dock) {
   const iconPath = path.join(__dirname, 'assets', 'icon.png');
   app.dock.setIcon(nativeImage.createFromPath(iconPath));
+}
+
+// Build macOS menu with correct app name
+if (process.platform === 'darwin') {
+  const template = [
+    {
+      label: 'RetroChallenges',
+      submenu: [
+        { role: 'about', label: 'About RetroChallenges' },
+        { type: 'separator' },
+        { role: 'hide', label: 'Hide RetroChallenges' },
+        { role: 'hideOthers' },
+        { role: 'unhide' },
+        { type: 'separator' },
+        { role: 'quit', label: 'Quit RetroChallenges' }
+      ]
+    },
+    { role: 'editMenu' },
+    { role: 'viewMenu' },
+    { role: 'windowMenu' }
+  ];
+  Menu.setApplicationMenu(Menu.buildFromTemplate(template));
 }
 
 app.whenReady().then(async () => {
