@@ -119,10 +119,7 @@ function registerIpcHandlers() {
       } else {
         const reason = launched && launched.error;
         if (reason === 'mono_missing') {
-          const installCmd = process.platform === 'darwin'
-            ? 'brew install mono'
-            : 'sudo apt install mono-complete';
-          return { success: false, error: `BizHawk requires the Mono runtime to run on ${process.platform === 'darwin' ? 'macOS' : 'Linux'}.\n\nInstall it by running:\n${installCmd}\n\nThen restart the app and try again.` };
+          return { success: false, error: 'mono_missing' };
         } else if (reason === 'not_configured') {
           return { success: false, error: 'Failed to launch challenge: EmuHawk path not configured. Please click the auto-detect button or use Browse to select EmuHawk manually.' };
         } else if (reason === 'not_found') {

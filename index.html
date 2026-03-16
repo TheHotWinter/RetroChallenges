@@ -1345,6 +1345,9 @@
                 const result = await window.api.invoke('launch-challenge', selectedGame, selectedChallenge);
                 if (result && result.success) {
                     document.getElementById('statusMessage').textContent = `Challenge "${selectedChallenge.name}" launched successfully! Waiting for completion...`;
+                } else if (result && result.error === 'mono_missing') {
+                    statusCard.classList.add('hidden');
+                    showMonoInstallPrompt();
                 } else {
                     const errorMsg = (result && result.error) || 'Failed to launch challenge: Unknown error occurred. Please check that EmuHawk is properly configured and try again.';
                     document.getElementById('statusMessage').textContent = errorMsg;
