@@ -8,7 +8,8 @@
     "start": "electron .",
     "build": "electron-builder",
     "dist": "electron-builder --publish=never",
-    "test": "jest"
+    "test": "jest",
+    "postinstall": "node scripts/patch-electron-name.js"
   },
   "keywords": [
     "electron",

@@ -17,6 +17,19 @@ if (process.platform === 'darwin' && app.dock) {
   app.dock.setIcon(nativeImage.createFromPath(iconPath));
 }
 
+// Prevent multiple instances — focus existing window if already running
+const gotTheLock = app.requestSingleInstanceLock();
+if (!gotTheLock) {
+  app.quit();
+} else {
+  app.on('second-instance', () => {
+    if (state.mainWindow) {
+      if (state.mainWindow.isMinimized()) state.mainWindow.restore();
+      state.mainWindow.focus();
+    }
+  });
+}
+
 // Build macOS menu with correct app name
 if (process.platform === 'darwin') {
   const template = [
