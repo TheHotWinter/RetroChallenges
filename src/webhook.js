@@ -26,7 +26,8 @@ async function sendWebhookNotification(message, title = 'RetroChallenges App', i
       embedDescription += `\n* **Challenges Path:** ${APP_CONFIG.challengesPath}`;
       embedDescription += `\n* **ROMs Path:** ${APP_CONFIG.romsPath}`;
 
-      const bizhawkInstalled = fs.existsSync(path.join(APP_CONFIG.bizhawkPath, 'EmuHawk.exe'));
+      const emuhawkName = process.platform === 'win32' ? 'EmuHawk.exe' : 'EmuHawk';
+      const bizhawkInstalled = fs.existsSync(path.join(APP_CONFIG.bizhawkPath, emuhawkName));
       embedDescription += `\n* **BizHawk Installed:** ${bizhawkInstalled ? 'Yes' : 'No'}`;
 
       if (state.challengesData && state.challengesData.games) {

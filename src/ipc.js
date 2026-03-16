@@ -24,12 +24,13 @@ function registerIpcHandlers() {
   });
 
   ipcMain.handle('select-emuhawk', async () => {
+    const filters = process.platform === 'win32'
+      ? [{ name: 'Executable Files', extensions: ['exe'] }, { name: 'All Files', extensions: ['*'] }]
+      : [{ name: 'All Files', extensions: ['*'] }];
+
     const result = await dialog.showOpenDialog(state.mainWindow, {
-      title: 'Select EmuHawk.exe',
-      filters: [
-        { name: 'Executable Files', extensions: ['exe'] },
-        { name: 'All Files', extensions: ['*'] }
-      ],
+      title: 'Select EmuHawk',
+      filters,
       properties: ['openFile']
     });
 
@@ -74,8 +75,9 @@ function registerIpcHandlers() {
       console.log('Challenge Data:', JSON.stringify(challengeData, null, 2));
 
       // Get ROM filename from challenge data, fall back to name-based convention
+      // Normalize backslashes from challenges.json (authored on Windows)
       const romFileName = gameData.rom
-        ? path.basename(gameData.rom)
+        ? path.basename(gameData.rom.replace(/\\/g, '/'))
         : `${gameData.name.toLowerCase().replace(/\s+/g, '_')}.nes`;
 
       const romPath = path.join(APP_CONFIG.romsPath, romFileName);
@@ -86,10 +88,10 @@ function registerIpcHandlers() {
         };
       }
 
-      // Get Lua script path
+      // Get Lua script path (normalize backslashes from challenges.json)
       let luaPath;
       if (challengeData.lua) {
-        luaPath = path.join(APP_CONFIG.challengesPath, challengeData.lua);
+        luaPath = path.join(APP_CONFIG.challengesPath, ...challengeData.lua.replace(/\\/g, '/').split('/'));
       } else {
         const gameFolder = gameData.name.toLowerCase().replace(/\s+/g, '_');
         const challengeFolder = challengeData.name.toLowerCase().replace(/\s+/g, '_');
@@ -116,11 +118,11 @@ function registerIpcHandlers() {
         return { success: true };
       } else {
         if (!APP_CONFIG.emuhawkPath) {
-          return { success: false, error: 'Failed to launch challenge: EmuHawk path not configured. Please click the auto-detect button or use Browse to select EmuHawk.exe manually.' };
+          return { success: false, error: 'Failed to launch challenge: EmuHawk path not configured. Please click the auto-detect button or use Browse to select EmuHawk manually.' };
         } else if (!fs.existsSync(APP_CONFIG.emuhawkPath)) {
-          return { success: false, error: `Failed to launch challenge: EmuHawk.exe not found at: ${APP_CONFIG.emuhawkPath}\n\nPlease check the path and try again, or use the auto-detect button.` };
+          return { success: false, error: `Failed to launch challenge: EmuHawk not found at: ${APP_CONFIG.emuhawkPath}\n\nPlease check the path and try again, or use the auto-detect button.` };
         } else {
-          return { success: false, error: 'Failed to launch challenge: Could not start EmuHawk. Please check that EmuHawk.exe is properly installed and try again.' };
+          return { success: false, error: 'Failed to launch challenge: Could not start EmuHawk. Please check that EmuHawk is properly installed and try again.' };
         }
       }
     } catch (error) {

@@ -6,23 +6,35 @@ const { APP_CONFIG, saveAppConfig } = require('./config');
 const state = require('./state');
 const { sendWebhookNotification } = require('./webhook');
 
+const isWindows = process.platform === 'win32';
+const isMac = process.platform === 'darwin';
+const EMUHAWK_EXE = isWindows ? 'EmuHawk.exe' : 'EmuHawk';
+
+// Pick the right BizHawk asset for this platform
+function findPlatformAsset(assets) {
+  if (isWindows) {
+    return assets.find(a => a.name.includes('BizHawk') && a.name.endsWith('.zip') && !a.name.includes('linux'));
+  }
+  // macOS and Linux both use the linux build (BizHawk runs via .NET/Mono)
+  return assets.find(a => a.name.includes('BizHawk') && a.name.includes('linux') && a.name.endsWith('.zip'))
+    || assets.find(a => a.name.includes('BizHawk') && a.name.endsWith('.zip'));
+}
+
 // Core download + extract logic shared by downloadBizHawk and forceDownloadBizHawk
 async function downloadAndInstallBizHawk() {
-  // Show popup notification
   if (state.mainWindow) {
     state.mainWindow.webContents.send('show-bizhawk-popup');
   }
 
-  // Get latest release from GitHub API
   const response = await httpClient.get('https://api.github.com/repos/TASEmulators/BizHawk/releases/latest', {
     headers: { 'User-Agent': 'RetroChallenges-App/1.0' }
   });
 
   const release = response.data;
-  const asset = release.assets.find(a => a.name.includes('BizHawk') && a.name.endsWith('.zip'));
+  const asset = findPlatformAsset(release.assets);
 
   if (!asset) {
-    throw new Error('Could not find BizHawk zip file in latest release');
+    throw new Error(`Could not find BizHawk download for ${process.platform}`);
   }
 
   console.log('Downloading BizHawk from:', asset.browser_download_url);
@@ -49,45 +61,51 @@ async function downloadAndInstallBizHawk() {
   }
   fs.mkdirSync(APP_CONFIG.bizhawkPath, { recursive: true });
 
-  // Write zip file temporarily
   const zipPath = path.join(APP_CONFIG.userDataPath, 'temp-bizhawk.zip');
   fs.writeFileSync(zipPath, zipResponse.data);
 
-  // Extract zip file
   const AdmZip = require('adm-zip');
   const zip = new AdmZip(zipPath);
   const extractPath = path.join(APP_CONFIG.userDataPath, 'temp-bizhawk-extract');
   zip.extractAllTo(extractPath, true);
 
-  // Find EmuHawk.exe in the extracted files
-  const findEmuHawkExe = (dir) => {
+  // Find EmuHawk executable in the extracted files
+  const findEmuHawkBinary = (dir) => {
     const files = fs.readdirSync(dir);
     for (const file of files) {
       const filePath = path.join(dir, file);
       const stat = fs.statSync(filePath);
       if (stat.isDirectory()) {
-        const found = findEmuHawkExe(filePath);
+        const found = findEmuHawkBinary(filePath);
         if (found) return found;
-      } else if (file === 'EmuHawk.exe') {
+      } else if (file === EMUHAWK_EXE) {
         return filePath;
       }
     }
     return null;
   };
 
-  const emuHawkPath = findEmuHawkExe(extractPath);
+  const emuHawkPath = findEmuHawkBinary(extractPath);
   if (!emuHawkPath) {
-    throw new Error('Could not find EmuHawk.exe in downloaded files');
+    throw new Error(`Could not find ${EMUHAWK_EXE} in downloaded files`);
   }
 
   // Copy entire BizHawk folder to our directory
   const bizhawkDir = path.dirname(emuHawkPath);
   fs.cpSync(bizhawkDir, APP_CONFIG.bizhawkPath, { recursive: true });
 
-  // Set the EmuHawk path
-  const finalEmuHawkPath = path.join(APP_CONFIG.bizhawkPath, 'EmuHawk.exe');
+  const finalEmuHawkPath = path.join(APP_CONFIG.bizhawkPath, EMUHAWK_EXE);
   APP_CONFIG.emuhawkPath = finalEmuHawkPath;
   saveAppConfig(state);
+
+  // Make executable on Unix platforms
+  if (!isWindows) {
+    try {
+      fs.chmodSync(finalEmuHawkPath, 0o755);
+    } catch (e) {
+      console.warn('Could not set executable permission:', e.message);
+    }
+  }
 
   // Clean up temporary files
   fs.rmSync(zipPath);
@@ -100,8 +118,7 @@ async function downloadBizHawk() {
   try {
     console.log('Starting BizHawk download...');
 
-    // Check if BizHawk is already installed
-    const existingBizHawkPath = path.join(APP_CONFIG.bizhawkPath, 'EmuHawk.exe');
+    const existingBizHawkPath = path.join(APP_CONFIG.bizhawkPath, EMUHAWK_EXE);
     if (fs.existsSync(existingBizHawkPath)) {
       if (state.mainWindow) {
         state.mainWindow.webContents.send('show-bizhawk-warning');
@@ -146,15 +163,41 @@ async function forceDownloadBizHawk() {
 }
 
 function findEmuHawkPath() {
-  const commonPaths = [
-    'C:\\Program Files\\BizHawk\\EmuHawk.exe',
-    'C:\\Program Files (x86)\\BizHawk\\EmuHawk.exe',
-    'C:\\BizHawk\\EmuHawk.exe',
-    'C:\\EmuHawk\\EmuHawk.exe',
-    path.join(process.env.USERPROFILE || '', 'Desktop', 'BizHawk', 'EmuHawk.exe'),
-    path.join(process.env.USERPROFILE || '', 'Downloads', 'BizHawk', 'EmuHawk.exe'),
-    path.join(process.env.USERPROFILE || '', 'Documents', 'BizHawk', 'EmuHawk.exe')
-  ];
+  const home = process.env.HOME || process.env.USERPROFILE || '';
+  const commonPaths = [];
+
+  if (isWindows) {
+    commonPaths.push(
+      'C:\\Program Files\\BizHawk\\EmuHawk.exe',
+      'C:\\Program Files (x86)\\BizHawk\\EmuHawk.exe',
+      'C:\\BizHawk\\EmuHawk.exe',
+      'C:\\EmuHawk\\EmuHawk.exe',
+      path.join(home, 'Desktop', 'BizHawk', 'EmuHawk.exe'),
+      path.join(home, 'Downloads', 'BizHawk', 'EmuHawk.exe'),
+      path.join(home, 'Documents', 'BizHawk', 'EmuHawk.exe')
+    );
+  } else if (isMac) {
+    commonPaths.push(
+      '/Applications/BizHawk/EmuHawk',
+      path.join(home, 'Applications', 'BizHawk', 'EmuHawk'),
+      path.join(home, 'Desktop', 'BizHawk', 'EmuHawk'),
+      path.join(home, 'Downloads', 'BizHawk', 'EmuHawk'),
+      '/usr/local/bin/EmuHawk',
+      '/opt/homebrew/bin/EmuHawk'
+    );
+  } else {
+    // Linux
+    commonPaths.push(
+      '/usr/bin/EmuHawk',
+      '/usr/local/bin/EmuHawk',
+      path.join(home, 'BizHawk', 'EmuHawk'),
+      path.join(home, 'Desktop', 'BizHawk', 'EmuHawk'),
+      path.join(home, 'Downloads', 'BizHawk', 'EmuHawk')
+    );
+  }
+
+  // Always check the app's own install location
+  commonPaths.push(path.join(APP_CONFIG.bizhawkPath, EMUHAWK_EXE));
 
   for (const emuPath of commonPaths) {
     if (fs.existsSync(emuPath)) {
@@ -173,7 +216,7 @@ function launchEmuHawk(romPath, luaScriptPath) {
   }
 
   if (!fs.existsSync(APP_CONFIG.emuhawkPath)) {
-    console.error(`EmuHawk.exe not found at: ${APP_CONFIG.emuhawkPath}`);
+    console.error(`EmuHawk not found at: ${APP_CONFIG.emuhawkPath}`);
     return false;
   }
 
@@ -187,7 +230,6 @@ function launchEmuHawk(romPath, luaScriptPath) {
     return false;
   }
 
-  // Kill existing process if running
   if (state.emuProcess) {
     try {
       state.emuProcess.kill();
